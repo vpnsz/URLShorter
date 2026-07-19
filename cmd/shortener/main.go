@@ -9,8 +9,6 @@ import (
 	"strconv"
 )
 
-// ./shortenertest.exe --test.v --test.run=^TestIteration1$ --binary-path=D:\golang_projects\yandex_practicum\Sprint1_UrlShorter\URLShorter\cmd\shortener\shortener
-
 const serverAddr string = "localhost"
 const serverPort uint16 = 8080
 

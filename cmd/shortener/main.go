@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"slices"
 	"strconv"
+
+	chi "github.com/go-chi/chi/v5"
+	middleware "github.com/go-chi/chi/v5/middleware"
 )
 
 const serverAddr string = "localhost"
@@ -52,20 +54,16 @@ func endPoint1(writer http.ResponseWriter, request *http.Request) {
 		writer.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	if contentTypeSlice, ok := request.Header["Content-Type"]; ok && slices.Contains(contentTypeSlice, "text/plain") {
-		buff, err := io.ReadAll(request.Body)
-		if err != nil {
-			writer.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		shortName := globalUrlDatabase.saveUrl(string(buff))
-		responseBody := fmt.Sprintf("http://%s:%d/%s", serverAddr, serverPort, shortName)
-		writer.WriteHeader(http.StatusCreated)
-		writer.Header().Set("Content-Type", "text/plain")
-		writer.Write([]byte(responseBody))
-	} else {
+	buff, err := io.ReadAll(request.Body)
+	if err != nil {
 		writer.WriteHeader(http.StatusBadRequest)
+		return
 	}
+	shortName := globalUrlDatabase.saveUrl(string(buff))
+	responseBody := fmt.Sprintf("http://%s:%d/%s", serverAddr, serverPort, shortName)
+	writer.WriteHeader(http.StatusCreated)
+	writer.Header().Set("Content-Type", "text/plain")
+	writer.Write([]byte(responseBody))
 }
 
 func endPoint2(writer http.ResponseWriter, request *http.Request) {
@@ -84,8 +82,10 @@ func endPoint2(writer http.ResponseWriter, request *http.Request) {
 }
 
 func main() {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/", endPoint1)
-	mux.HandleFunc("/{id}", endPoint2)
-	http.ListenAndServe(fmt.Sprintf("%s:%d", serverAddr, serverPort), mux)
+	router := chi.NewRouter()
+	router.Post("/", endPoint1)
+	router.Get("/{id}", endPoint2)
+	router.Use(middleware.AllowContentType("text/plain"))
+
+	http.ListenAndServe(fmt.Sprintf("%s:%d", serverAddr, serverPort), router)
 }

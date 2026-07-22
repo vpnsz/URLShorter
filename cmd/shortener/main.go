@@ -8,7 +8,6 @@ import (
 	"strconv"
 
 	chi "github.com/go-chi/chi/v5"
-	middleware "github.com/go-chi/chi/v5/middleware"
 )
 
 const serverAddr string = "localhost"
@@ -85,7 +84,6 @@ func main() {
 	router := chi.NewRouter()
 	router.Post("/", endPoint1)
 	router.Get("/{id}", endPoint2)
-	router.Use(middleware.AllowContentType("text/plain"))
 
 	http.ListenAndServe(fmt.Sprintf("%s:%d", serverAddr, serverPort), router)
 }

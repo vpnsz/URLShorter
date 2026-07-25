@@ -93,11 +93,6 @@ var testData = []struct {
 }
 
 func TestUrlShorter(t *testing.T) {
-	globalConfig.ServerHost = "localhost"
-	globalConfig.ServerPort = 8080
-	globalConfig.BaseShorterHost = "localhost"
-	globalConfig.BaseShorterPort = 8080
-
 	for i, data := range testData {
 		fmt.Println("test ", i)
 		request := httptest.NewRequest(data.reqMethod, data.reqUrl, strings.NewReader(data.reqBody))

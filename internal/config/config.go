@@ -8,5 +8,5 @@ type Config struct {
 }
 
 func NewDefaultConfig() *Config {
-	return &Config{"localhost", 8080, "localhost", 8080}
+	return &Config{"localhost", 8080, "http://localhost", 8080}
 }

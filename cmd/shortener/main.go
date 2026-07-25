@@ -1,18 +1,20 @@
 package main
 
 import (
+	"URLShorter/internal/config"
 	"encoding/base64"
+	"errors"
+	"flag"
 	"fmt"
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 
-	chi "github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5"
 )
 
-const serverAddr string = "localhost"
-const serverPort uint16 = 8080
-
+var globalConfig = new(config.Config)
 var globalUrlDatabase urlDatabase = newUrlDatabase()
 
 func convertIdToShortName(id uint64) (shortName string) {
@@ -59,7 +61,7 @@ func endPoint1(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 	shortName := globalUrlDatabase.saveUrl(string(buff))
-	responseBody := fmt.Sprintf("http://%s:%d/%s", serverAddr, serverPort, shortName)
+	responseBody := fmt.Sprintf("http://%s:%d/%s", globalConfig.BaseShorterHost, globalConfig.BaseShorterPort, shortName)
 	writer.WriteHeader(http.StatusCreated)
 	writer.Header().Set("Content-Type", "text/plain")
 	writer.Write([]byte(responseBody))
@@ -80,10 +82,49 @@ func endPoint2(writer http.ResponseWriter, request *http.Request) {
 	writer.WriteHeader(http.StatusTemporaryRedirect)
 }
 
+type hostPortFlag struct {
+	port uint16
+	host string
+}
+
+func (self *hostPortFlag) String() string {
+	return fmt.Sprintf("%s:%d", self.host, self.port)
+}
+
+func (self *hostPortFlag) Set(arg string) error {
+	hostPort := strings.Split(arg, ":")
+	if len(hostPort) != 2 {
+		return errors.New("Incorrect HostName")
+	}
+	port, err := strconv.ParseUint(hostPort[1], 10, 16)
+	if err != nil {
+		return err
+	}
+	self.port = uint16(port)
+	self.host = hostPort[0]
+	return nil
+}
+
+func parseFlags() {
+	paramA := new(hostPortFlag)
+	paramB := new(hostPortFlag)
+	flag.Var(paramA, "a", "host:port")
+	flag.Var(paramB, "b", "host:port")
+	flag.Parse()
+
+	globalConfig.ServerHost = paramA.host
+	globalConfig.ServerPort = paramA.port
+
+	globalConfig.BaseShorterHost = paramB.host
+	globalConfig.BaseShorterPort = paramB.port
+}
+
 func main() {
+	parseFlags()
+
 	router := chi.NewRouter()
 	router.Post("/", endPoint1)
 	router.Get("/{id}", endPoint2)
 
-	http.ListenAndServe(fmt.Sprintf("%s:%d", serverAddr, serverPort), router)
+	http.ListenAndServe(fmt.Sprintf("%s:%d", globalConfig.ServerHost, globalConfig.ServerPort), router)
 }

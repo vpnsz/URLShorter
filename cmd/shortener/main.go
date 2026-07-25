@@ -61,7 +61,7 @@ func endPoint1(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 	shortName := globalUrlDatabase.saveUrl(string(buff))
-	responseBody := fmt.Sprintf("http://%s:%d/%s", globalConfig.BaseShorterHost, globalConfig.BaseShorterPort, shortName)
+	responseBody := fmt.Sprintf("%s:%d/%s", globalConfig.BaseShorterHost, globalConfig.BaseShorterPort, shortName)
 	writer.WriteHeader(http.StatusCreated)
 	writer.Header().Set("Content-Type", "text/plain")
 	writer.Write([]byte(responseBody))
@@ -99,16 +99,21 @@ func (self *hostPortFlag) String() string {
 }
 
 func (self *hostPortFlag) Set(arg string) error {
-	hostPort := strings.Split(arg, ":")
-	if len(hostPort) != 2 {
+	var hostStr string
+	var portStr string
+
+	if index := strings.LastIndex(arg, ":"); index == -1 {
 		return errors.New("Incorrect HostName")
+	} else {
+		hostStr = arg[0:index]
+		portStr = arg[index+1:]
 	}
-	port, err := strconv.ParseUint(hostPort[1], 10, 16)
+	port, err := strconv.ParseUint(portStr, 10, 16)
 	if err != nil {
 		return err
 	}
 	self.port = uint16(port)
-	self.host = hostPort[0]
+	self.host = hostStr
 	return nil
 }
 

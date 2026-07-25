@@ -6,3 +6,7 @@ type Config struct {
 	BaseShorterHost string
 	BaseShorterPort uint16
 }
+
+func NewDefaultConfig() *Config {
+	return &Config{"localhost", 8080, "localhost", 8080}
+}

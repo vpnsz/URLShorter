@@ -14,7 +14,7 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-var globalConfig = new(config.Config)
+var globalConfig = config.NewDefaultConfig()
 var globalUrlDatabase urlDatabase = newUrlDatabase()
 
 func convertIdToShortName(id uint64) (shortName string) {
@@ -87,6 +87,13 @@ type hostPortFlag struct {
 	host string
 }
 
+func (self *hostPortFlag) FlagPresent() bool {
+	if self.port != 0 && len(self.host) != 0 {
+		return true
+	}
+	return false
+}
+
 func (self *hostPortFlag) String() string {
 	return fmt.Sprintf("%s:%d", self.host, self.port)
 }
@@ -112,11 +119,14 @@ func parseFlags() {
 	flag.Var(paramB, "b", "host:port")
 	flag.Parse()
 
-	globalConfig.ServerHost = paramA.host
-	globalConfig.ServerPort = paramA.port
-
-	globalConfig.BaseShorterHost = paramB.host
-	globalConfig.BaseShorterPort = paramB.port
+	if paramA.FlagPresent() {
+		globalConfig.ServerHost = paramA.host
+		globalConfig.ServerPort = paramA.port
+	}
+	if paramB.FlagPresent() {
+		globalConfig.BaseShorterHost = paramB.host
+		globalConfig.BaseShorterPort = paramB.port
+	}
 }
 
 func main() {

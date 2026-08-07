@@ -1,12 +1,13 @@
 package main
 
 import (
-	"fmt"
+	"URLShorter/internal/config"
+	"URLShorter/internal/handler"
+	"URLShorter/internal/repository"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
-
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -35,82 +36,73 @@ import (
 //HTTP/1.1 307 Temporary Redirect
 //Location: https://practicum.yandex.ru/
 
-func httpRequest() {
-
+func initTest() *handler.UrlDatabaseController {
+	c := config.NewDefaultConfig()
+	db := repository.NewUrlDatabase()
+	return &handler.UrlDatabaseController{Config: c, Database: db}
 }
 
-type pathValue struct {
-	key   string
-	value string
+func saveUrl(controller *handler.UrlDatabaseController, recorder *httptest.ResponseRecorder) ([]byte, *http.Response, error) {
+	request := httptest.NewRequest("POST", "/", strings.NewReader("https://practicum.yandex.ru/"))
+
+	request.Header.Set("Content-Type", "text/plain")
+	request.Header.Set("Host", "localhost:8080")
+
+	controller.SaveUrlHandler(recorder, request)
+	response := recorder.Result()
+	body, err := io.ReadAll(response.Body)
+	return body, response, err
 }
 
-var testData = []struct {
-	reqMethod    string
-	reqUrl       string
-	reqHost      string
-	reqBody      string
-	reqPathValue *pathValue
-	respCode     int
-	respBody     string
-	respHeaders  http.Header
-	enpointFunk  func(writer http.ResponseWriter, request *http.Request)
-}{
-	// positiv tests
-	{
-		reqMethod:    "POST",
-		reqUrl:       "/",
-		reqHost:      "localhost:8080",
-		reqBody:      "https://practicum.yandex.ru/",
-		reqPathValue: nil,
-		respCode:     201,
-		respBody:     "http://localhost:8080/MA==",
-		respHeaders:  http.Header{},
-		enpointFunk:  endPoint1,
-	},
-	{
-		reqMethod:    "GET",
-		reqUrl:       "/MA==",
-		reqHost:      "localhost:8080",
-		reqBody:      "",
-		reqPathValue: &pathValue{key: "id", value: "MA=="},
-		respCode:     307,
-		respBody:     "",
-		respHeaders:  http.Header(map[string][]string{"Location": {"https://practicum.yandex.ru/"}}),
-		enpointFunk:  endPoint2,
-	},
-	// negative tests
-	{
-		reqMethod:    "GET",
-		reqUrl:       "/76172",
-		reqHost:      "localhost:8080",
-		reqBody:      "",
-		reqPathValue: &pathValue{key: "id", value: "76172"},
-		respCode:     400,
-		respBody:     "",
-		respHeaders:  http.Header{},
-		enpointFunk:  endPoint2,
-	},
+func getUrl(id string, controller *handler.UrlDatabaseController, recorder *httptest.ResponseRecorder) ([]byte, *http.Response, error) {
+	request := httptest.NewRequest("GET", "/"+id, strings.NewReader(""))
+
+	request.SetPathValue("id", id)
+
+	request.Header.Set("Content-Type", "text/plain")
+	request.Header.Set("Host", "localhost:8080")
+
+	controller.GetUrlHandler(recorder, request)
+	response := recorder.Result()
+	body, err := io.ReadAll(response.Body)
+	return body, response, err
 }
 
-func TestUrlShorter(t *testing.T) {
-	for i, data := range testData {
-		fmt.Println("test ", i)
-		request := httptest.NewRequest(data.reqMethod, data.reqUrl, strings.NewReader(data.reqBody))
-		if data.reqPathValue != nil {
-			request.SetPathValue(data.reqPathValue.key, data.reqPathValue.value)
-		}
-		request.Header.Set("Content-Type", "text/plain")
-		request.Header.Set("Host", data.reqHost)
-		recorder := httptest.NewRecorder()
-		data.enpointFunk(recorder, request)
-		response := recorder.Result()
-		body, _ := io.ReadAll(response.Body)
+func TestSaveUrl(t *testing.T) {
+	controller := initTest()
+	recorder := httptest.NewRecorder()
 
-		require.True(t, string(body) == data.respBody)
-		require.True(t, response.StatusCode == data.respCode)
+	_, response, err := saveUrl(controller, recorder)
 
-		for key, value := range data.respHeaders {
-			require.True(t, response.Header.Get(key) == value[0])
-		}
-	}
+	require.NoError(t, err)
+	require.Equal(t, 201, response.StatusCode)
+}
+
+func TestGetUrlPositive(t *testing.T) {
+	controller := initTest()
+	recorder := httptest.NewRecorder()
+
+	body, _, err := saveUrl(controller, recorder)
+
+	i := strings.LastIndex(string(body), "/")
+	require.NotEqual(t, -1, i)
+	var shortUrl = string(body[i+1:])
+	require.NoError(t, err)
+
+	recorder = httptest.NewRecorder()
+	_, response, err := getUrl(shortUrl, controller, recorder)
+	require.NoError(t, err)
+
+	require.Equal(t, 307, response.StatusCode)
+	require.Equal(t, "https://practicum.yandex.ru/", response.Header.Get("Location"))
+}
+
+func TestGetUrlNegative(t *testing.T) {
+	controller := initTest()
+	recorder := httptest.NewRecorder()
+
+	_, response, err := getUrl("72823", controller, recorder)
+	require.NoError(t, err)
+
+	require.Equal(t, 400, response.StatusCode)
 }

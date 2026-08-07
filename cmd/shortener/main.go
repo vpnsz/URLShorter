@@ -2,144 +2,63 @@ package main
 
 import (
 	"URLShorter/internal/config"
-	"encoding/base64"
-	"errors"
+	"URLShorter/internal/handler"
+	"URLShorter/internal/repository"
 	"flag"
 	"fmt"
-	"io"
+	"log"
 	"net/http"
-	"strconv"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
 )
 
-var globalConfig = config.NewDefaultConfig()
-var globalUrlDatabase urlDatabase = newUrlDatabase()
-
-func convertIdToShortName(id uint64) (shortName string) {
-	idStr := strconv.FormatUint(id, 10)
-	return base64.URLEncoding.EncodeToString([]byte(idStr))
-}
-
-type urlData struct {
-	url string
-	id  uint64
-}
-
-type urlDatabase struct {
-	currentId  uint64
-	urlStorage map[string]urlData
-}
-
-func newUrlDatabase() urlDatabase {
-	return urlDatabase{currentId: 0, urlStorage: make(map[string]urlData)}
-}
-
-func (self *urlDatabase) saveUrl(url string) string {
-	shortName := convertIdToShortName(self.currentId)
-	self.urlStorage[shortName] = urlData{url: url, id: self.currentId}
-	self.currentId++
-	return shortName
-}
-
-func (self *urlDatabase) getUrlByShortName(shortName string) (string, error) {
-	if value, ok := self.urlStorage[shortName]; ok {
-		return value.url, nil
-	}
-	return "", fmt.Errorf("No such ShortName")
-}
-
-func endPoint1(writer http.ResponseWriter, request *http.Request) {
-	if request.Method != http.MethodPost {
-		writer.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	buff, err := io.ReadAll(request.Body)
-	if err != nil {
-		writer.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	shortName := globalUrlDatabase.saveUrl(string(buff))
-	responseBody := fmt.Sprintf("%s:%d/%s", globalConfig.BaseShorterHost, globalConfig.BaseShorterPort, shortName)
-	writer.WriteHeader(http.StatusCreated)
-	writer.Header().Set("Content-Type", "text/plain")
-	writer.Write([]byte(responseBody))
-}
-
-func endPoint2(writer http.ResponseWriter, request *http.Request) {
-	var shortName = request.PathValue("id")
-	if len(shortName) == 0 {
-		writer.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	url, err := globalUrlDatabase.getUrlByShortName(shortName)
-	if err != nil {
-		writer.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	writer.Header().Add("Location", url)
-	writer.WriteHeader(http.StatusTemporaryRedirect)
-}
-
 type hostPortFlag struct {
-	port uint16
 	host string
 }
 
-func (self *hostPortFlag) FlagPresent() bool {
-	if self.port != 0 && len(self.host) != 0 {
+func (f *hostPortFlag) FlagPresent() bool {
+	if len(f.host) != 0 {
 		return true
 	}
 	return false
 }
 
-func (self *hostPortFlag) String() string {
-	return fmt.Sprintf("%s:%d", self.host, self.port)
+func (f *hostPortFlag) String() string {
+	return fmt.Sprintf("%s", f.host)
 }
 
-func (self *hostPortFlag) Set(arg string) error {
-	var hostStr string
-	var portStr string
-
-	if index := strings.LastIndex(arg, ":"); index == -1 {
-		return errors.New("Incorrect HostName")
-	} else {
-		hostStr = arg[0:index]
-		portStr = arg[index+1:]
-	}
-	port, err := strconv.ParseUint(portStr, 10, 16)
-	if err != nil {
-		return err
-	}
-	self.port = uint16(port)
-	self.host = hostStr
+func (f *hostPortFlag) Set(arg string) error {
+	f.host = arg
 	return nil
 }
 
-func parseFlags() {
+func parseFlags(c *config.Config) {
 	paramA := new(hostPortFlag)
 	paramB := new(hostPortFlag)
 	flag.Var(paramA, "a", "host:port")
 	flag.Var(paramB, "b", "host:port")
 	flag.Parse()
-
 	if paramA.FlagPresent() {
-		globalConfig.ServerHost = paramA.host
-		globalConfig.ServerPort = paramA.port
+		c.ServerAddr = paramA.host
 	}
 	if paramB.FlagPresent() {
-		globalConfig.BaseShorterHost = paramB.host
-		globalConfig.BaseShorterPort = paramB.port
+		c.BaseShorterAddr = paramB.host
 	}
 }
 
 func main() {
-	parseFlags()
+	c := config.NewDefaultConfig()
+	db := repository.NewUrlDatabase()
+
+	parseFlags(c)
+
+	var controller = handler.UrlDatabaseController{Config: c, Database: db}
 
 	router := chi.NewRouter()
-	router.Post("/", endPoint1)
-	router.Get("/{id}", endPoint2)
+	router.Post("/", controller.SaveUrlHandler)
+	router.Get("/{id}", controller.GetUrlHandler)
 
-	http.ListenAndServe(fmt.Sprintf("%s:%d", globalConfig.ServerHost, globalConfig.ServerPort), router)
+	if err := http.ListenAndServe(fmt.Sprintf("%s", c.ServerAddr), router); err != nil {
+		log.Fatal("ListenAndServer error: ", err.Error())
+	}
 }

@@ -3,9 +3,11 @@ package handler
 import (
 	"URLShorter/internal/config"
 	"URLShorter/internal/repository"
-	"fmt"
+	"URLShorter/internal/service"
+	"errors"
 	"io"
 	"net/http"
+	"net/url"
 )
 
 type UrlDatabaseController struct {
@@ -19,8 +21,15 @@ func (c *UrlDatabaseController) SaveUrlHandler(writer http.ResponseWriter, reque
 		writer.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	shortName := c.Database.SaveUrl(string(buff))
-	responseBody := fmt.Sprintf("%s/%s", c.Config.BaseShorterAddr, shortName)
+	shortName, err := c.Database.SaveUrl(string(buff))
+	if err != nil {
+		if errors.Is(err, service.GetUrlErr) {
+			writer.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		panic("UNREACHABLE: Now only one error return from Database.SaveUrl")
+	}
+	responseBody, _ := url.JoinPath(c.Config.BaseShorterAddr, shortName) // игнорируем ошибку, так-как url всегда valid
 	writer.Header().Set("Content-Type", "text/plain")
 	writer.WriteHeader(http.StatusCreated)
 	writer.Write([]byte(responseBody))

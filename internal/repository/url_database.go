@@ -1,23 +1,10 @@
 package repository
 
 import (
+	"URLShorter/internal/service"
 	"fmt"
-	"math/rand"
-	"strings"
 	"sync"
 )
-
-const globalShortNameLen = 8
-
-func getRandString(n int) string {
-	var symbols = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
-	var result strings.Builder
-	result.Grow(n)
-	for i := 0; i < n; i++ {
-		result.WriteRune(symbols[rand.Int()%len(symbols)])
-	}
-	return result.String()
-}
 
 type UrlDatabase struct {
 	currentId  uint64
@@ -29,17 +16,15 @@ func NewUrlDatabase() *UrlDatabase {
 	return &UrlDatabase{currentId: 0, urlStorage: make(map[string]string)}
 }
 
-func (d *UrlDatabase) SaveUrl(url string) (shortName string) {
+func (d *UrlDatabase) SaveUrl(url string) (shortName string, err error) {
 	d.mutex.Lock()
 	defer d.mutex.Unlock()
-	for {
-		shortName = getRandString(globalShortNameLen)
-		if _, ok := d.urlStorage[shortName]; !ok {
-			break
-		}
+	shortName, err = service.GetShortUrl(20, d.urlStorage)
+	if err != nil {
+		return "", err
 	}
 	d.urlStorage[shortName] = url
-	return shortName
+	return shortName, nil
 }
 
 func (d *UrlDatabase) GetUrlByShortName(shortName string) (string, error) {

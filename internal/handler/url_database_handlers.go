@@ -6,6 +6,7 @@ import (
 	"URLShorter/internal/service"
 	"errors"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 )
@@ -21,13 +22,15 @@ func (c *UrlDatabaseController) SaveUrlHandler(writer http.ResponseWriter, reque
 		writer.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	shortName, err := c.Database.SaveUrl(string(buff))
+	shortName, err := service.SaveUrl(20, string(buff), c.Database)
 	if err != nil {
-		if errors.Is(err, service.GetUrlErr) {
+		if errors.Is(err, repository.SaveUrlErr) {
 			writer.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		panic("UNREACHABLE: Now only one error return from Database.SaveUrl")
+		log.Printf("Error: %s", err.Error())
+		writer.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 	responseBody, _ := url.JoinPath(c.Config.BaseShorterAddr, shortName) // игнорируем ошибку, так-как url всегда valid
 	writer.Header().Set("Content-Type", "text/plain")

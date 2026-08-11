@@ -1,12 +1,11 @@
 package service
 
 import (
+	"URLShorter/internal/repository"
 	"errors"
 	"math/rand"
 	"strings"
 )
-
-var GetUrlErr = errors.New("Can't get short ull because number of attempts > MAX_VALUE")
 
 const shortNameLen = 8
 
@@ -20,17 +19,20 @@ func getRandString(n int) string {
 	return result.String()
 }
 
-func GetShortUrl(attempts int, storage map[string]string) (string, error) {
+func SaveUrl(attempts int, url string, storage *repository.UrlDatabase) (string, error) {
 	var shortName string
 	var i = 0
 	for ; i < attempts; i++ {
 		shortName = getRandString(shortNameLen)
-		if _, ok := storage[shortName]; !ok {
+		err := storage.SaveUrl(shortName, url)
+		if err == nil {
 			break
+		} else if err != nil && !errors.Is(err, repository.SaveUrlErr) {
+			return "", err
 		}
 	}
 	if i == attempts {
-		return "", GetUrlErr
+		return "", repository.SaveUrlErr
 	}
 	return shortName, nil
 }

@@ -3,6 +3,7 @@ package service
 import (
 	"URLShorter/internal/repository"
 	"errors"
+	"fmt"
 	"math/rand"
 	"strings"
 )
@@ -27,8 +28,11 @@ func SaveUrl(attempts int, url string, storage *repository.UrlDatabase) (string,
 		err := storage.SaveUrl(shortName, url)
 		if err == nil {
 			break
-		} else if err != nil && !errors.Is(err, repository.SaveUrlErr) {
-			return "", err
+		} else if err != nil {
+			if errors.Is(err, repository.SaveUrlErr) {
+				continue
+			}
+			return "", fmt.Errorf("failed to save url: %w", err)
 		}
 	}
 	if i == attempts {

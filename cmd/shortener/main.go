@@ -16,6 +16,7 @@ func main() {
 	db := repository.NewUrlDatabase()
 
 	config.ParseFlags(c)
+	config.ParseEnv(c)
 
 	var controller = handler.UrlDatabaseController{Config: c, Database: db}
 

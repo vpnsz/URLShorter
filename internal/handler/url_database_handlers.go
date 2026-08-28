@@ -79,7 +79,7 @@ func (c *UrlDatabaseController) JsonSaveUrlHandler(writer http.ResponseWriter, r
 	responseBody, _ := url.JoinPath(c.Config.BaseShorterAddr, shortName) // игнорируем ошибку, так-как url всегда valid
 	writer.Header().Set("Content-Type", "application/json")
 	writer.WriteHeader(http.StatusCreated)
-	if err := json.NewEncoder(writer).Encode(fmt.Sprintf(`{"result": "%s"}`, responseBody)); err != nil {
+	if err := json.NewEncoder(writer).Encode(json.RawMessage(fmt.Sprintf(`{"result": "%s"}`, responseBody))); err != nil {
 		log.Printf("Error: %s", err.Error())
 	}
 }

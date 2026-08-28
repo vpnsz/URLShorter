@@ -30,6 +30,7 @@ func main() {
 
 	router := chi.NewRouter()
 	router.Post("/", handler.LoggedHandler(&sugarLogger, controller.SaveUrlHandler))
+	router.Post("/api/shorten", handler.LoggedHandler(&sugarLogger, controller.JsonSaveUrlHandler))
 	router.Get("/{id}", handler.LoggedHandler(&sugarLogger, controller.GetUrlHandler))
 
 	if err := http.ListenAndServe(fmt.Sprintf("%s", c.ServerAddr), router); err != nil {

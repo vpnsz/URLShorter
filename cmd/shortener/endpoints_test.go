@@ -54,6 +54,18 @@ func saveUrl(controller *handler.UrlDatabaseController, recorder *httptest.Respo
 	return body, response, err
 }
 
+func saveJsonUrl(controller *handler.UrlDatabaseController, recorder *httptest.ResponseRecorder) ([]byte, *http.Response, error) {
+	request := httptest.NewRequest("POST", "/api/shorten", strings.NewReader(`{"url": "https://practicum.yandex.ru/"}`))
+
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Host", "localhost:8080")
+
+	controller.JsonSaveUrlHandler(recorder, request)
+	response := recorder.Result()
+	body, err := io.ReadAll(response.Body)
+	return body, response, err
+}
+
 func getUrl(id string, controller *handler.UrlDatabaseController, recorder *httptest.ResponseRecorder) ([]byte, *http.Response, error) {
 	request := httptest.NewRequest("GET", "/"+id, strings.NewReader(""))
 
@@ -73,6 +85,16 @@ func TestSaveUrl(t *testing.T) {
 	recorder := httptest.NewRecorder()
 
 	_, response, err := saveUrl(controller, recorder)
+
+	require.NoError(t, err)
+	require.Equal(t, 201, response.StatusCode)
+}
+
+func TestSaveUrlJson(t *testing.T) {
+	controller := initTest()
+	recorder := httptest.NewRecorder()
+
+	_, response, err := saveJsonUrl(controller, recorder)
 
 	require.NoError(t, err)
 	require.Equal(t, 201, response.StatusCode)

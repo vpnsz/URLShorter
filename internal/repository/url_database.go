@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"sync"
 )
@@ -42,6 +43,7 @@ func (d *UrlDatabase) GetUrlByShortName(shortName string) (string, error) {
 func (d *UrlDatabase) SaveToFile(path string) error {
 	json, err := json.MarshalIndent(d.urlStorage, "", " ")
 	if err != nil {
+		log.Println("Error: Can't create json from url storage")
 		return err
 	}
 	file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)

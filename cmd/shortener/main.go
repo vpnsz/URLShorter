@@ -26,7 +26,13 @@ func main() {
 	config.ParseFlags(c)
 	config.ParseEnv(c)
 
+	err = db.RestoreFromFile(c.StorageFilePath)
+	if err != nil {
+		log.Printf("Can't restore storage file")
+	}
+
 	var controller = handler.UrlDatabaseController{Config: c, Database: db}
+	defer controller.Database.SaveToFile(controller.Config.StorageFilePath)
 
 	router := chi.NewRouter()
 	router.Post("/", handler.CompressHandler(handler.LoggedHandler(&sugarLogger, controller.SaveUrlHandler)))

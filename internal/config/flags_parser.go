@@ -28,13 +28,18 @@ func (f *hostPortFlag) Set(arg string) error {
 func ParseFlags(c *Config) {
 	paramA := new(hostPortFlag)
 	paramB := new(hostPortFlag)
+	var fileFlag string
 	flag.Var(paramA, "a", "host:port")
 	flag.Var(paramB, "b", "host:port")
+	flag.StringVar(&fileFlag, "-f", "./default_storage.txt", "-f file_path")
 	flag.Parse()
 	if paramA.FlagPresent() {
 		c.ServerAddr = paramA.host
 	}
 	if paramB.FlagPresent() {
 		c.BaseShorterAddr = paramB.host
+	}
+	if len(fileFlag) != 0 {
+		c.StorageFilePath = fileFlag
 	}
 }

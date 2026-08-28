@@ -7,6 +7,9 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
@@ -32,7 +35,14 @@ func main() {
 	}
 
 	var controller = handler.UrlDatabaseController{Config: c, Database: db}
-	defer controller.Database.SaveToFile(controller.Config.StorageFilePath)
+
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+	go func() {
+		_ = <-sigChan
+		controller.Database.SaveToFile(controller.Config.StorageFilePath)
+		os.Exit(0)
+	}()
 
 	router := chi.NewRouter()
 	router.Post("/", handler.CompressHandler(handler.LoggedHandler(&sugarLogger, controller.SaveUrlHandler)))

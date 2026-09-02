@@ -71,6 +71,7 @@ func (c *UrlDatabaseController) JsonSaveUrlHandler(writer http.ResponseWriter, r
 	var jsonBody jsonSaveUrlRequest
 	if err := json.NewDecoder(request.Body).Decode(&jsonBody); err != nil {
 		writer.WriteHeader(http.StatusBadRequest)
+		return
 	}
 	shortName := c.trySaveUrl(jsonBody.Url, writer)
 	if len(shortName) == 0 {

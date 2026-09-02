@@ -1,41 +1,50 @@
 package repository
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
 	"os"
 	"sync"
+
+	"github.com/google/uuid"
 )
 
 var SaveUrlErr = errors.New("Can't save short url because already exist in UrlDatabase")
 
+type urlJsonFormat struct {
+	Uuid        string `json:"uuid"`
+	ShortUrl    string `json:"short_url"`
+	OriginalUrl string `json:"original_url"`
+}
+
 type UrlDatabase struct {
-	urlStorage map[string]string
+	urlStorage []urlJsonFormat
+	urlMap     map[string]int
 	mutex      sync.Mutex
 }
 
 func NewUrlDatabase() *UrlDatabase {
-	return &UrlDatabase{urlStorage: make(map[string]string)}
+	return &UrlDatabase{urlMap: make(map[string]int)}
 }
 
 func (d *UrlDatabase) SaveUrl(shortName, url string) (err error) {
 	d.mutex.Lock()
 	defer d.mutex.Unlock()
-	if _, ok := d.urlStorage[shortName]; ok {
+	if _, ok := d.urlMap[shortName]; ok {
 		return SaveUrlErr
 	}
-	d.urlStorage[shortName] = url
+	d.urlStorage = append(d.urlStorage, urlJsonFormat{Uuid: uuid.New().String(), ShortUrl: shortName, OriginalUrl: url})
+	d.urlMap[shortName] = len(d.urlStorage) - 1
 	return nil
 }
 
 func (d *UrlDatabase) GetUrlByShortName(shortName string) (string, error) {
 	d.mutex.Lock()
 	defer d.mutex.Unlock()
-	if url, ok := d.urlStorage[shortName]; ok {
-		return url, nil
+	if i, ok := d.urlMap[shortName]; ok {
+		return d.urlStorage[i].OriginalUrl, nil
 	}
 	return "", fmt.Errorf("No such ShortName")
 }
@@ -51,11 +60,7 @@ func (d *UrlDatabase) SaveToFile(path string) error {
 		return err
 	}
 	defer file.Close()
-	buff := bytes.NewBuffer(json)
-	n, err := buff.WriteTo(file)
-	if int(n) != len(json) {
-		return fmt.Errorf("failed to save UrlDatabase to the file: %w", err)
-	}
+	_, err = file.Write(json)
 	if err != nil {
 		return err
 	}
@@ -70,5 +75,8 @@ func (d *UrlDatabase) RestoreFromFile(path string) error {
 	defer file.Close()
 	decoder := json.NewDecoder(file)
 	decoder.Decode(&d.urlStorage)
+	for i := 0; i < len(d.urlStorage); i++ {
+		d.urlMap[d.urlStorage[i].ShortUrl] = i
+	}
 	return nil
 }

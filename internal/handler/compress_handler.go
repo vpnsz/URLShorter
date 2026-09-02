@@ -3,7 +3,6 @@ package handler
 import (
 	"compress/gzip"
 	"io"
-	"log"
 	"net/http"
 	"strings"
 )
@@ -13,15 +12,16 @@ type gzipReader struct {
 	gzip          io.Reader
 }
 
-func newGzipReader(body io.ReadCloser) *gzipReader {
+func newGzipReader(body io.ReadCloser) (*gzipReader, error) {
 	var result gzipReader
 	result.ReadCloser = body
 	reader, err := gzip.NewReader(result.ReadCloser)
 	result.gzip = reader
 	if err != nil {
-		log.Fatal("Can't create gzip Reader from body Reader: ", err.Error())
+		return nil, err
+		//log.Fatal("Can't create gzip Reader from body Reader: ", err.Error())
 	}
-	return &result
+	return &result, nil
 }
 
 func (reader *gzipReader) Read(p []byte) (n int, err error) {
@@ -51,9 +51,18 @@ func (writer *gzipWriter) Close() {
 func CompressHandler(next http.HandlerFunc) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		if strings.Contains(request.Header.Get("Content-Encoding"), "gzip") {
-			request.Body = newGzipReader(request.Body)
+			if reader, err := newGzipReader(request.Body); err != nil {
+				writer.WriteHeader(http.StatusBadRequest)
+				return
+			} else {
+				request.Body = reader
+			}
 		}
-		if strings.Contains(request.Header.Get("Accept-Encoding"), "gzip") {
+
+		contentType := request.Header.Get("Content-Type")
+		flag := strings.Contains(contentType, "application/json") || strings.Contains(contentType, "text/html")
+
+		if flag && strings.Contains(request.Header.Get("Accept-Encoding"), "gzip") {
 			var gzipWriter = newGzipWriter(writer)
 			writer.Header().Set("Content-Encoding", "gzip")
 			writer = gzipWriter

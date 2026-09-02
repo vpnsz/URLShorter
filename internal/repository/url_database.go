@@ -11,16 +11,16 @@ import (
 	"github.com/google/uuid"
 )
 
-var SaveUrlErr = errors.New("Can't save short url because already exist in UrlDatabase")
+var ErrSaveURL = errors.New("can't save short url because already exist in url database")
 
-type urlJsonFormat struct {
+type urlJSONFormat struct {
 	UUID        string `json:"uuid"`
 	ShortURL    string `json:"short_url"`
 	OriginalURL string `json:"original_url"`
 }
 
 type URLDatabase struct {
-	urlStorage []urlJsonFormat
+	urlStorage []urlJSONFormat
 	urlMap     map[string]int
 	mutex      sync.Mutex
 }
@@ -33,9 +33,9 @@ func (d *URLDatabase) SaveURL(shortName, url string) (err error) {
 	d.mutex.Lock()
 	defer d.mutex.Unlock()
 	if _, ok := d.urlMap[shortName]; ok {
-		return SaveUrlErr
+		return ErrSaveURL
 	}
-	d.urlStorage = append(d.urlStorage, urlJsonFormat{UUID: uuid.New().String(), ShortURL: shortName, OriginalURL: url})
+	d.urlStorage = append(d.urlStorage, urlJSONFormat{UUID: uuid.New().String(), ShortURL: shortName, OriginalURL: url})
 	d.urlMap[shortName] = len(d.urlStorage) - 1
 	return nil
 }
@@ -46,7 +46,7 @@ func (d *URLDatabase) GetURLByShortName(shortName string) (string, error) {
 	if i, ok := d.urlMap[shortName]; ok {
 		return d.urlStorage[i].OriginalURL, nil
 	}
-	return "", fmt.Errorf("No such ShortName")
+	return "", fmt.Errorf("no such short name")
 }
 
 func (d *URLDatabase) SaveToFile(path string) error {

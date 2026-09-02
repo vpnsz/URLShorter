@@ -28,14 +28,14 @@ func SaveURL(attempts int, url string, storage *repository.URLDatabase) (string,
 		err := storage.SaveURL(shortName, url)
 		if err == nil {
 			break
-		} else if errors.Is(err, repository.SaveUrlErr) {
+		} else if errors.Is(err, repository.ErrSaveURL) {
 			continue
 		} else {
 			return "", fmt.Errorf("failed to save url: %w", err)
 		}
 	}
 	if i == attempts {
-		return "", repository.SaveUrlErr
+		return "", repository.ErrSaveURL
 	}
 	return shortName, nil
 }

@@ -46,7 +46,7 @@ func main() {
 	router := chi.NewRouter()
 	router.Post("/", handler.CompressHandler(handler.LoggedHandler(&sugarLogger, controller.SaveURLHandler)))
 	router.Post("/api/shorten", handler.CompressHandler(handler.LoggedHandler(&sugarLogger, controller.JSONSaveURLHandler)))
-	router.Get("/{id}", handler.CompressHandler(handler.LoggedHandler(&sugarLogger, controller.GetUrlHandler)))
+	router.Get("/{id}", handler.CompressHandler(handler.LoggedHandler(&sugarLogger, controller.GetURLHandler)))
 
 	if err := http.ListenAndServe(c.ServerAddr, router); err != nil {
 		log.Fatal("ListenAndServer error: ", err.Error())

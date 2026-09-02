@@ -2,7 +2,6 @@ package config
 
 import (
 	"flag"
-	"fmt"
 )
 
 type hostPortFlag struct {
@@ -10,14 +9,11 @@ type hostPortFlag struct {
 }
 
 func (f *hostPortFlag) FlagPresent() bool {
-	if len(f.host) != 0 {
-		return true
-	}
-	return false
+	return len(f.host) != 0
 }
 
 func (f *hostPortFlag) String() string {
-	return fmt.Sprintf("%s", f.host)
+	return f.host
 }
 
 func (f *hostPortFlag) Set(arg string) error {
@@ -28,13 +24,18 @@ func (f *hostPortFlag) Set(arg string) error {
 func ParseFlags(c *Config) {
 	paramA := new(hostPortFlag)
 	paramB := new(hostPortFlag)
+	var fileFlag = ""
 	flag.Var(paramA, "a", "host:port")
 	flag.Var(paramB, "b", "host:port")
+	flag.StringVar(&fileFlag, "f", "./default_storage.txt", "-f file_path")
 	flag.Parse()
 	if paramA.FlagPresent() {
 		c.ServerAddr = paramA.host
 	}
 	if paramB.FlagPresent() {
 		c.BaseShorterAddr = paramB.host
+	}
+	if len(fileFlag) != 0 {
+		c.StorageFilePath = fileFlag
 	}
 }

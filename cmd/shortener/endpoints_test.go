@@ -66,7 +66,7 @@ func saveJSONURL(controller *handler.URLDatabaseController, recorder *httptest.R
 	return body, response, err
 }
 
-func getURLWithId(id string, controller *handler.URLDatabaseController, recorder *httptest.ResponseRecorder) ([]byte, *http.Response, error) {
+func getURLWithID(id string, controller *handler.URLDatabaseController, recorder *httptest.ResponseRecorder) ([]byte, *http.Response, error) {
 	request := httptest.NewRequest("GET", "/"+id, strings.NewReader(""))
 
 	request.SetPathValue("id", id)
@@ -115,7 +115,7 @@ func TestGetUrlPositive(t *testing.T) {
 	require.NoError(t, err)
 
 	recorder = httptest.NewRecorder()
-	_, response, err = getURLWithId(shortURL, controller, recorder)
+	_, response, err = getURLWithID(shortURL, controller, recorder)
 	defer response.Body.Close()
 
 	require.NoError(t, err)
@@ -128,7 +128,7 @@ func TestGetUrlNegative(t *testing.T) {
 	controller := initTest()
 	recorder := httptest.NewRecorder()
 
-	_, response, err := getURLWithId("72823", controller, recorder)
+	_, response, err := getURLWithID("72823", controller, recorder)
 	defer response.Body.Close()
 
 	require.NoError(t, err)

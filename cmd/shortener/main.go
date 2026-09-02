@@ -4,7 +4,6 @@ import (
 	"URLShorter/internal/config"
 	"URLShorter/internal/handler"
 	"URLShorter/internal/repository"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -24,7 +23,7 @@ func main() {
 
 	sugarLogger := *logger.Sugar()
 	c := config.NewDefaultConfig()
-	db := repository.NewUrlDatabase()
+	db := repository.NewURLDatabase()
 
 	config.ParseFlags(c)
 	config.ParseEnv(c)
@@ -34,22 +33,22 @@ func main() {
 		log.Printf("Can't restore storage file")
 	}
 
-	var controller = handler.UrlDatabaseController{Config: c, Database: db}
+	var controller = handler.URLDatabaseController{Config: c, Database: db}
 
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 	go func() {
-		_ = <-sigChan
+		<-sigChan
 		controller.Database.SaveToFile(controller.Config.StorageFilePath)
 		os.Exit(0)
 	}()
 
 	router := chi.NewRouter()
-	router.Post("/", handler.CompressHandler(handler.LoggedHandler(&sugarLogger, controller.SaveUrlHandler)))
-	router.Post("/api/shorten", handler.CompressHandler(handler.LoggedHandler(&sugarLogger, controller.JsonSaveUrlHandler)))
+	router.Post("/", handler.CompressHandler(handler.LoggedHandler(&sugarLogger, controller.SaveURLHandler)))
+	router.Post("/api/shorten", handler.CompressHandler(handler.LoggedHandler(&sugarLogger, controller.JSONSaveURLHandler)))
 	router.Get("/{id}", handler.CompressHandler(handler.LoggedHandler(&sugarLogger, controller.GetUrlHandler)))
 
-	if err := http.ListenAndServe(fmt.Sprintf("%s", c.ServerAddr), router); err != nil {
+	if err := http.ListenAndServe(c.ServerAddr, router); err != nil {
 		log.Fatal("ListenAndServer error: ", err.Error())
 	}
 }

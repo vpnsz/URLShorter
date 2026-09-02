@@ -20,18 +20,17 @@ func getRandString(n int) string {
 	return result.String()
 }
 
-func SaveUrl(attempts int, url string, storage *repository.UrlDatabase) (string, error) {
+func SaveURL(attempts int, url string, storage *repository.URLDatabase) (string, error) {
 	var shortName string
 	var i = 0
 	for ; i < attempts; i++ {
 		shortName = getRandString(shortNameLen)
-		err := storage.SaveUrl(shortName, url)
+		err := storage.SaveURL(shortName, url)
 		if err == nil {
 			break
-		} else if err != nil {
-			if errors.Is(err, repository.SaveUrlErr) {
-				continue
-			}
+		} else if errors.Is(err, repository.SaveUrlErr) {
+			continue
+		} else {
 			return "", fmt.Errorf("failed to save url: %w", err)
 		}
 	}

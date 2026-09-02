@@ -13,17 +13,17 @@ import (
 	"net/url"
 )
 
-type jsonSaveUrlRequest struct {
-	Url string `json:"url"`
+type jsonSaveURLRequest struct {
+	URL string `json:"url"`
 }
 
-type UrlDatabaseController struct {
+type URLDatabaseController struct {
 	Config   *config.Config
-	Database *repository.UrlDatabase
+	Database *repository.URLDatabase
 }
 
-func (c *UrlDatabaseController) trySaveUrl(url string, writer http.ResponseWriter) string {
-	shortName, err := service.SaveUrl(20, url, c.Database)
+func (c *URLDatabaseController) trySaveURL(url string, writer http.ResponseWriter) string {
+	shortName, err := service.SaveURL(20, url, c.Database)
 	if err != nil {
 		if errors.Is(err, repository.SaveUrlErr) {
 			writer.WriteHeader(http.StatusInternalServerError)
@@ -36,13 +36,13 @@ func (c *UrlDatabaseController) trySaveUrl(url string, writer http.ResponseWrite
 	return shortName
 }
 
-func (c *UrlDatabaseController) SaveUrlHandler(writer http.ResponseWriter, request *http.Request) {
+func (c *URLDatabaseController) SaveURLHandler(writer http.ResponseWriter, request *http.Request) {
 	buff, err := io.ReadAll(request.Body)
 	if err != nil {
 		writer.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	shortName := c.trySaveUrl(string(buff), writer)
+	shortName := c.trySaveURL(string(buff), writer)
 	if len(shortName) == 0 {
 		return
 	}
@@ -52,13 +52,13 @@ func (c *UrlDatabaseController) SaveUrlHandler(writer http.ResponseWriter, reque
 	writer.Write([]byte(responseBody))
 }
 
-func (c *UrlDatabaseController) GetUrlHandler(writer http.ResponseWriter, request *http.Request) {
+func (c *URLDatabaseController) GetUrlHandler(writer http.ResponseWriter, request *http.Request) {
 	var shortName = request.PathValue("id")
 	if len(shortName) == 0 {
 		writer.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	url, err := c.Database.GetUrlByShortName(shortName)
+	url, err := c.Database.GetURLByShortName(shortName)
 	if err != nil {
 		writer.WriteHeader(http.StatusBadRequest)
 		return
@@ -67,13 +67,13 @@ func (c *UrlDatabaseController) GetUrlHandler(writer http.ResponseWriter, reques
 	writer.WriteHeader(http.StatusTemporaryRedirect)
 }
 
-func (c *UrlDatabaseController) JsonSaveUrlHandler(writer http.ResponseWriter, request *http.Request) {
-	var jsonBody jsonSaveUrlRequest
+func (c *URLDatabaseController) JSONSaveURLHandler(writer http.ResponseWriter, request *http.Request) {
+	var jsonBody jsonSaveURLRequest
 	if err := json.NewDecoder(request.Body).Decode(&jsonBody); err != nil {
 		writer.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	shortName := c.trySaveUrl(jsonBody.Url, writer)
+	shortName := c.trySaveURL(jsonBody.URL, writer)
 	if len(shortName) == 0 {
 		return
 	}

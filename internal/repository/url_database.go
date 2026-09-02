@@ -14,42 +14,42 @@ import (
 var SaveUrlErr = errors.New("Can't save short url because already exist in UrlDatabase")
 
 type urlJsonFormat struct {
-	Uuid        string `json:"uuid"`
-	ShortUrl    string `json:"short_url"`
-	OriginalUrl string `json:"original_url"`
+	UUID        string `json:"uuid"`
+	ShortURL    string `json:"short_url"`
+	OriginalURL string `json:"original_url"`
 }
 
-type UrlDatabase struct {
+type URLDatabase struct {
 	urlStorage []urlJsonFormat
 	urlMap     map[string]int
 	mutex      sync.Mutex
 }
 
-func NewUrlDatabase() *UrlDatabase {
-	return &UrlDatabase{urlMap: make(map[string]int)}
+func NewURLDatabase() *URLDatabase {
+	return &URLDatabase{urlMap: make(map[string]int)}
 }
 
-func (d *UrlDatabase) SaveUrl(shortName, url string) (err error) {
+func (d *URLDatabase) SaveURL(shortName, url string) (err error) {
 	d.mutex.Lock()
 	defer d.mutex.Unlock()
 	if _, ok := d.urlMap[shortName]; ok {
 		return SaveUrlErr
 	}
-	d.urlStorage = append(d.urlStorage, urlJsonFormat{Uuid: uuid.New().String(), ShortUrl: shortName, OriginalUrl: url})
+	d.urlStorage = append(d.urlStorage, urlJsonFormat{UUID: uuid.New().String(), ShortURL: shortName, OriginalURL: url})
 	d.urlMap[shortName] = len(d.urlStorage) - 1
 	return nil
 }
 
-func (d *UrlDatabase) GetUrlByShortName(shortName string) (string, error) {
+func (d *URLDatabase) GetURLByShortName(shortName string) (string, error) {
 	d.mutex.Lock()
 	defer d.mutex.Unlock()
 	if i, ok := d.urlMap[shortName]; ok {
-		return d.urlStorage[i].OriginalUrl, nil
+		return d.urlStorage[i].OriginalURL, nil
 	}
 	return "", fmt.Errorf("No such ShortName")
 }
 
-func (d *UrlDatabase) SaveToFile(path string) error {
+func (d *URLDatabase) SaveToFile(path string) error {
 	json, err := json.MarshalIndent(d.urlStorage, "", " ")
 	if err != nil {
 		log.Println("Error: Can't create json from url storage")
@@ -67,7 +67,7 @@ func (d *UrlDatabase) SaveToFile(path string) error {
 	return nil
 }
 
-func (d *UrlDatabase) RestoreFromFile(path string) error {
+func (d *URLDatabase) RestoreFromFile(path string) error {
 	file, err := os.OpenFile(path, os.O_RDONLY, 0666)
 	if err != nil {
 		return err
@@ -76,7 +76,7 @@ func (d *UrlDatabase) RestoreFromFile(path string) error {
 	decoder := json.NewDecoder(file)
 	decoder.Decode(&d.urlStorage)
 	for i := 0; i < len(d.urlStorage); i++ {
-		d.urlMap[d.urlStorage[i].ShortUrl] = i
+		d.urlMap[d.urlStorage[i].ShortURL] = i
 	}
 	return nil
 }

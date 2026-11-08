@@ -34,6 +34,7 @@ func main() {
 	}
 
 	var controller = handler.URLDatabaseController{Config: c, Database: db}
+	var postgresDbController = handler.PostgresController{Config: c, Database: &repository.URLPostgresDatabase{}}
 
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
@@ -47,6 +48,7 @@ func main() {
 	router.Post("/", handler.CompressHandler(handler.LoggedHandler(&sugarLogger, controller.SaveURLHandler)))
 	router.Post("/api/shorten", handler.CompressHandler(handler.LoggedHandler(&sugarLogger, controller.JSONSaveURLHandler)))
 	router.Get("/{id}", handler.CompressHandler(handler.LoggedHandler(&sugarLogger, controller.GetURLHandler)))
+	router.Get("/ping", handler.CompressHandler(handler.LoggedHandler(&sugarLogger, postgresDbController.PostgresPingHandler)))
 
 	if err := http.ListenAndServe(c.ServerAddr, router); err != nil {
 		log.Fatal("ListenAndServer error: ", err.Error())

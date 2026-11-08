@@ -36,25 +36,37 @@ import (
 //HTTP/1.1 307 Temporary Redirect
 //Location: https://practicum.yandex.ru/
 
-func initTest() *handler.UrlDatabaseController {
+func initTest() *handler.URLDatabaseController {
 	c := config.NewDefaultConfig()
-	db := repository.NewUrlDatabase()
-	return &handler.UrlDatabaseController{Config: c, Database: db}
+	db := repository.NewURLDatabase()
+	return &handler.URLDatabaseController{Config: c, Database: db}
 }
 
-func saveUrl(controller *handler.UrlDatabaseController, recorder *httptest.ResponseRecorder) ([]byte, *http.Response, error) {
+func getURL(controller *handler.URLDatabaseController, recorder *httptest.ResponseRecorder) ([]byte, *http.Response, error) {
 	request := httptest.NewRequest("POST", "/", strings.NewReader("https://practicum.yandex.ru/"))
 
 	request.Header.Set("Content-Type", "text/plain")
 	request.Header.Set("Host", "localhost:8080")
 
-	controller.SaveUrlHandler(recorder, request)
+	controller.SaveURLHandler(recorder, request)
 	response := recorder.Result()
 	body, err := io.ReadAll(response.Body)
 	return body, response, err
 }
 
-func getUrl(id string, controller *handler.UrlDatabaseController, recorder *httptest.ResponseRecorder) ([]byte, *http.Response, error) {
+func saveJSONURL(controller *handler.URLDatabaseController, recorder *httptest.ResponseRecorder) ([]byte, *http.Response, error) {
+	request := httptest.NewRequest("POST", "/api/shorten", strings.NewReader(`{"url": "https://practicum.yandex.ru/"}`))
+
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Host", "localhost:8080")
+
+	controller.JSONSaveURLHandler(recorder, request)
+	response := recorder.Result()
+	body, err := io.ReadAll(response.Body)
+	return body, response, err
+}
+
+func getURLWithID(id string, controller *handler.URLDatabaseController, recorder *httptest.ResponseRecorder) ([]byte, *http.Response, error) {
 	request := httptest.NewRequest("GET", "/"+id, strings.NewReader(""))
 
 	request.SetPathValue("id", id)
@@ -62,7 +74,7 @@ func getUrl(id string, controller *handler.UrlDatabaseController, recorder *http
 	request.Header.Set("Content-Type", "text/plain")
 	request.Header.Set("Host", "localhost:8080")
 
-	controller.GetUrlHandler(recorder, request)
+	controller.GetURLHandler(recorder, request)
 	response := recorder.Result()
 	body, err := io.ReadAll(response.Body)
 	return body, response, err
@@ -72,7 +84,19 @@ func TestSaveUrl(t *testing.T) {
 	controller := initTest()
 	recorder := httptest.NewRecorder()
 
-	_, response, err := saveUrl(controller, recorder)
+	_, response, err := getURL(controller, recorder)
+	defer response.Body.Close()
+
+	require.NoError(t, err)
+	require.Equal(t, 201, response.StatusCode)
+}
+
+func TestSaveUrlJson(t *testing.T) {
+	controller := initTest()
+	recorder := httptest.NewRecorder()
+
+	_, response, err := saveJSONURL(controller, recorder)
+	defer response.Body.Close()
 
 	require.NoError(t, err)
 	require.Equal(t, 201, response.StatusCode)
@@ -82,15 +106,18 @@ func TestGetUrlPositive(t *testing.T) {
 	controller := initTest()
 	recorder := httptest.NewRecorder()
 
-	body, _, err := saveUrl(controller, recorder)
+	body, response, err := getURL(controller, recorder)
+	defer response.Body.Close()
 
 	i := strings.LastIndex(string(body), "/")
 	require.NotEqual(t, -1, i)
-	var shortUrl = string(body[i+1:])
+	var shortURL = string(body[i+1:])
 	require.NoError(t, err)
 
 	recorder = httptest.NewRecorder()
-	_, response, err := getUrl(shortUrl, controller, recorder)
+	_, response, err = getURLWithID(shortURL, controller, recorder)
+	defer response.Body.Close()
+
 	require.NoError(t, err)
 
 	require.Equal(t, 307, response.StatusCode)
@@ -101,7 +128,9 @@ func TestGetUrlNegative(t *testing.T) {
 	controller := initTest()
 	recorder := httptest.NewRecorder()
 
-	_, response, err := getUrl("72823", controller, recorder)
+	_, response, err := getURLWithID("72823", controller, recorder)
+	defer response.Body.Close()
+
 	require.NoError(t, err)
 
 	require.Equal(t, 400, response.StatusCode)

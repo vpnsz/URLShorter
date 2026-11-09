@@ -1,0 +1,2 @@
+DROP INDEX IF EXISTS url_index;
+DROP TABLE IF EXISTS urls;

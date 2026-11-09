@@ -8,6 +8,8 @@ import (
 	"os"
 	"sync"
 
+	"URLShorter/internal/config"
+
 	"github.com/google/uuid"
 )
 
@@ -19,17 +21,17 @@ type urlJSONFormat struct {
 	OriginalURL string `json:"original_url"`
 }
 
-type URLDatabase struct {
+type URLFileDatabase struct {
 	urlStorage []urlJSONFormat
 	urlMap     map[string]int
 	mutex      sync.Mutex
 }
 
-func NewURLDatabase() *URLDatabase {
-	return &URLDatabase{urlMap: make(map[string]int)}
+func NewURLDatabase() *URLFileDatabase {
+	return &URLFileDatabase{urlMap: make(map[string]int)}
 }
 
-func (d *URLDatabase) SaveURL(shortName, url string) (err error) {
+func (d *URLFileDatabase) SaveURL(shortName, url string) (err error) {
 	d.mutex.Lock()
 	defer d.mutex.Unlock()
 	if _, ok := d.urlMap[shortName]; ok {
@@ -40,7 +42,12 @@ func (d *URLDatabase) SaveURL(shortName, url string) (err error) {
 	return nil
 }
 
-func (d *URLDatabase) GetURLByShortName(shortName string) (string, error) {
+func (d *URLFileDatabase) SaveURLBatch() error {
+	// TODO: implement saving batch to URLFileDatabase
+	return nil
+}
+
+func (d *URLFileDatabase) GetURLByShortName(shortName string) (string, error) {
 	d.mutex.Lock()
 	defer d.mutex.Unlock()
 	if i, ok := d.urlMap[shortName]; ok {
@@ -49,13 +56,13 @@ func (d *URLDatabase) GetURLByShortName(shortName string) (string, error) {
 	return "", fmt.Errorf("no such short name")
 }
 
-func (d *URLDatabase) SaveToFile(path string) error {
+func (d *URLFileDatabase) SaveToStorage(conf *config.Config) error {
 	json, err := json.MarshalIndent(d.urlStorage, "", " ")
 	if err != nil {
 		log.Println("Error: Can't create json from url storage")
 		return err
 	}
-	file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)
+	file, err := os.OpenFile(conf.StorageFilePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)
 	if err != nil {
 		return err
 	}
@@ -67,8 +74,8 @@ func (d *URLDatabase) SaveToFile(path string) error {
 	return nil
 }
 
-func (d *URLDatabase) RestoreFromFile(path string) error {
-	file, err := os.OpenFile(path, os.O_RDONLY, 0666)
+func (d *URLFileDatabase) RestoreFromStorage(conf *config.Config) error {
+	file, err := os.OpenFile(conf.StorageFilePath, os.O_RDONLY, 0666)
 	if err != nil {
 		return err
 	}
@@ -78,5 +85,10 @@ func (d *URLDatabase) RestoreFromFile(path string) error {
 	for i := 0; i < len(d.urlStorage); i++ {
 		d.urlMap[d.urlStorage[i].ShortURL] = i
 	}
+	return nil
+}
+
+func (d *URLFileDatabase) CheckStorage() error {
+	//TODO: implement here, maybe check if file exist or something else
 	return nil
 }

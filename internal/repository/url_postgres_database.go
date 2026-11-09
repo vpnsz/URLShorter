@@ -55,7 +55,7 @@ func (d *URLPostgresDatabase) Open(addr string) error {
 }
 
 func (d *URLPostgresDatabase) Close() {
-	d.Close()
+	d.db.Close()
 }
 
 // URLDatabaseDriver interface implementation

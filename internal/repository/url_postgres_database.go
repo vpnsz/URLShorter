@@ -41,7 +41,6 @@ func (d *URLPostgresDatabase) MigrateUp(migrationPath string) error {
 	if err != nil {
 		return err
 	}
-	defer mm.Close()
 	err = mm.Up()
 	if err != nil && !errors.Is(err, migrate.ErrNoChange) {
 		return err

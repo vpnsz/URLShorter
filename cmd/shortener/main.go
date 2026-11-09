@@ -40,7 +40,7 @@ func main() {
 		if err != nil {
 			log.Fatal("postgresDB.Open(c.DatabaseAddr) error: ", err.Error())
 		}
-		//defer postgresDB.Close()
+		defer postgresDB.Close()
 		err = postgresDB.CheckStorage()
 		if err != nil {
 			log.Fatal("postgresDB.CheckStorage() error: ", err.Error())

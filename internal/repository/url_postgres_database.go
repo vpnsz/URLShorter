@@ -23,7 +23,7 @@ const (
 
 const (
 	insertURLQuery string = "INSERT INTO urls(uuid, url, short_url) VALUES ($1, $2, $3)"
-	selectURLQuery string = "SELECT url from urls WHERE short_url = $1 LIMIT 1"
+	selectURLQuery string = "SELECT url FROM urls WHERE short_url=$1 LIMIT 1"
 )
 
 type URLPostgresDatabase struct {

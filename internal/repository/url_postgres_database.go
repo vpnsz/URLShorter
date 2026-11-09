@@ -21,8 +21,8 @@ const (
 )
 
 const (
-	insertUrlQuery string = "INSERT INTO urls(uuid, url, short_url) VALUES ($1, $2, $3)"
-	selectUrlQuery string = "SELECT url from urls WHERE short_url = $1 LIMIT 1"
+	insertURLQuery string = "INSERT INTO urls(uuid, url, short_url) VALUES ($1, $2, $3)"
+	selectURLQuery string = "SELECT url from urls WHERE short_url = $1 LIMIT 1"
 )
 
 type URLPostgresDatabase struct {
@@ -71,12 +71,12 @@ func (d *URLPostgresDatabase) SaveURL(shortName, url string) error {
 	ctx, cancel := context.WithTimeout(d.ctx, databaseInsertTimeout)
 	defer cancel()
 
-	row := d.db.QueryRowContext(ctx, selectUrlQuery, shortName)
+	row := d.db.QueryRowContext(ctx, selectURLQuery, shortName)
 
 	if row.Err() == nil {
 		return ErrSaveURL
 	}
-	_, err := d.db.ExecContext(ctx, insertUrlQuery, uuid.New().String(), url, shortName)
+	_, err := d.db.ExecContext(ctx, insertURLQuery, uuid.New().String(), url, shortName)
 	if err != nil {
 		return err
 	}
@@ -92,7 +92,7 @@ func (d *URLPostgresDatabase) GetURLByShortName(shortName string) (string, error
 	ctx, cancel := context.WithTimeout(d.ctx, databaseRequestTimeout)
 	defer cancel()
 
-	row := d.db.QueryRowContext(ctx, selectUrlQuery, shortName)
+	row := d.db.QueryRowContext(ctx, selectURLQuery, shortName)
 	if err := row.Err(); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return "", ErrNoSuchShortName

@@ -45,8 +45,10 @@ func main() {
 		if err != nil {
 			log.Fatal("postgresDB.CheckStorage() error: ", err.Error())
 		}
-		// TODO: check "if already migrated" error
-		postgresDB.MigrateUp(migrationPath)
+		err = postgresDB.MigrateUp(migrationPath)
+		if err != nil {
+			log.Fatal("postgresDB.MigrateUp() error: ", err.Error())
+		}
 		db = &postgresDB
 	} else {
 		db = repository.NewURLDatabase()

@@ -1,21 +1,28 @@
 package repository
 
 import (
+	"URLShorter/internal/config"
 	"context"
 	"database/sql"
+	"errors"
 	"time"
-
-	"URLShorter/internal/config"
 
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/pgx"
+	"github.com/google/uuid"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 const (
+	databaseInsertTimeout  = time.Second * 6
 	databaseRequestTimeout = time.Second * 2
 	databasePingTimeout    = time.Second * 1
+)
+
+const (
+	insertUrlQuery string = "INSERT INTO urls(uuid, url, short_url) VALUES ($1, $2, $3)"
+	selectUrlQuery string = "SELECT url from urls WHERE short_url = $1 LIMIT 1"
 )
 
 type URLPostgresDatabase struct {
@@ -35,7 +42,7 @@ func (d *URLPostgresDatabase) MigrateUp(migrationPath string) error {
 	}
 	defer mm.Close()
 	err = mm.Up()
-	if err != nil {
+	if err != nil && !errors.Is(err, migrate.ErrNoChange) {
 		return err
 	}
 	return nil
@@ -60,19 +67,45 @@ func (d *URLPostgresDatabase) Close() {
 
 // URLDatabaseDriver interface implementation
 
-func (d *URLPostgresDatabase) SaveURL(shortName, url string) (err error) {
+func (d *URLPostgresDatabase) SaveURL(shortName, url string) error {
+	ctx, cancel := context.WithTimeout(d.ctx, databaseInsertTimeout)
+	defer cancel()
+
+	row := d.db.QueryRowContext(ctx, selectUrlQuery, shortName)
+
+	if row.Err() == nil {
+		return ErrSaveURL
+	}
+	_, err := d.db.ExecContext(ctx, insertUrlQuery, uuid.New().String(), url, shortName)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
 func (d *URLPostgresDatabase) SaveURLBatch() error {
+	// TODO: implement save batch
 	return nil
 }
 
 func (d *URLPostgresDatabase) GetURLByShortName(shortName string) (string, error) {
-	return "", nil
+	ctx, cancel := context.WithTimeout(d.ctx, databaseRequestTimeout)
+	defer cancel()
+
+	row := d.db.QueryRowContext(ctx, selectUrlQuery, shortName)
+	if err := row.Err(); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", ErrNoSuchShortName
+		}
+		return "", err
+	}
+	var url string
+	row.Scan(&url)
+	return url, nil
 }
 
 func (d *URLPostgresDatabase) SaveToStorage(conf *config.Config) error {
+	// No implementation, for PostgresSql database, already in database
 	return nil
 }
 

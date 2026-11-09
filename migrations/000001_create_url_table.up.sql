@@ -5,4 +5,4 @@ CREATE TABLE urls (
     short_url VARCHAR(2555) NOT NULL
 );
 
-CREATE INDEX url_index on urls(url);
+CREATE INDEX short_url_index on urls(short_url);

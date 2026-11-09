@@ -1,2 +1,2 @@
-DROP INDEX IF EXISTS url_index;
+DROP INDEX IF EXISTS short_url_index;
 DROP TABLE IF EXISTS urls;

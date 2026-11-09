@@ -2,8 +2,6 @@ package repository
 
 import (
 	"encoding/json"
-	"errors"
-	"fmt"
 	"log"
 	"os"
 	"sync"
@@ -12,8 +10,6 @@ import (
 
 	"github.com/google/uuid"
 )
-
-var ErrSaveURL = errors.New("can't save short url because already exist in url database")
 
 type urlJSONFormat struct {
 	UUID        string `json:"uuid"`
@@ -31,7 +27,7 @@ func NewURLDatabase() *URLFileDatabase {
 	return &URLFileDatabase{urlMap: make(map[string]int)}
 }
 
-func (d *URLFileDatabase) SaveURL(shortName, url string) (err error) {
+func (d *URLFileDatabase) SaveURL(shortName, url string) error {
 	d.mutex.Lock()
 	defer d.mutex.Unlock()
 	if _, ok := d.urlMap[shortName]; ok {
@@ -53,7 +49,7 @@ func (d *URLFileDatabase) GetURLByShortName(shortName string) (string, error) {
 	if i, ok := d.urlMap[shortName]; ok {
 		return d.urlStorage[i].OriginalURL, nil
 	}
-	return "", fmt.Errorf("no such short name")
+	return "", ErrNoSuchShortName
 }
 
 func (d *URLFileDatabase) SaveToStorage(conf *config.Config) error {

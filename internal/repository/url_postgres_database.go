@@ -17,7 +17,7 @@ import (
 const (
 	databaseInsertTimeout  = time.Second * 6
 	databaseRequestTimeout = time.Second * 2
-	databasePingTimeout    = time.Second * 1
+	databasePingTimeout    = time.Second * 2
 )
 
 const (

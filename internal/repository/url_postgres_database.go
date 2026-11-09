@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/golang-migrate/migrate/v4"
@@ -119,6 +120,7 @@ func (d *URLPostgresDatabase) CheckStorage() error {
 	defer cancel()
 	err := d.db.PingContext(ctx)
 	if err != nil {
+		fmt.Println("ERROR: ", err.Error())
 		return err
 	}
 	return nil

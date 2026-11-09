@@ -16,7 +16,7 @@ import (
 	"go.uber.org/zap"
 )
 
-const migrationPath string = "github://vpnsz/URLShorter/tree/iter11/migrations"
+const migrationPath string = "github://vpnsz/URLShorter/migrations#iter11"
 
 func main() {
 	logger, err := zap.NewDevelopment()

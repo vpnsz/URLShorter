@@ -71,13 +71,15 @@ func (d *URLPostgresDatabase) SaveURL(shortName, url string) error {
 	ctx, cancel := context.WithTimeout(d.ctx, databaseInsertTimeout)
 	defer cancel()
 
-	row := d.db.QueryRowContext(ctx, selectURLQuery, shortName)
+	var tmp string
+	err := d.db.QueryRowContext(ctx, selectURLQuery, shortName).Scan(&tmp)
 
-	if !errors.Is(row.Err(), sql.ErrNoRows) {
+	if !errors.Is(err, sql.ErrNoRows) {
 		return ErrSaveURL
 	}
 
-	_, err := d.db.ExecContext(ctx, insertURLQuery, uuid.New().String(), url, shortName)
+	_, err = d.db.ExecContext(ctx, insertURLQuery, uuid.New().String(), url, shortName)
+
 	if err != nil {
 		return err
 	}
@@ -94,14 +96,16 @@ func (d *URLPostgresDatabase) GetURLByShortName(shortName string) (string, error
 	defer cancel()
 
 	row := d.db.QueryRowContext(ctx, selectURLQuery, shortName)
-	if err := row.Err(); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return "", ErrNoSuchShortName
-		}
+	err := row.Err()
+	if err != nil {
 		return "", err
 	}
+
 	var url string
-	row.Scan(&url)
+	err = row.Scan(&url)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", ErrNoSuchShortName
+	}
 	return url, nil
 }
 

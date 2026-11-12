@@ -73,9 +73,10 @@ func (d *URLPostgresDatabase) SaveURL(shortName, url string) error {
 
 	row := d.db.QueryRowContext(ctx, selectURLQuery, shortName)
 
-	if row.Err() == nil {
+	if !errors.Is(row.Err(), sql.ErrNoRows) {
 		return ErrSaveURL
 	}
+
 	_, err := d.db.ExecContext(ctx, insertURLQuery, uuid.New().String(), url, shortName)
 	if err != nil {
 		return err

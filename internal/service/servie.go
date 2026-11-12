@@ -20,7 +20,7 @@ func getRandString(n int) string {
 	return result.String()
 }
 
-func SaveURL(attempts int, url string, storage *repository.URLDatabase) (string, error) {
+func SaveURL(attempts int, url string, storage repository.URLDatabaseDriver) (string, error) {
 	var shortName string
 	var i = 0
 	for ; i < attempts; i++ {

@@ -19,7 +19,7 @@ type jsonSaveURLRequest struct {
 
 type URLDatabaseController struct {
 	Config   *config.Config
-	Database *repository.URLDatabase
+	Database repository.URLDatabaseDriver
 }
 
 func (c *URLDatabaseController) trySaveURL(url string, writer http.ResponseWriter) string {
@@ -83,4 +83,13 @@ func (c *URLDatabaseController) JSONSaveURLHandler(writer http.ResponseWriter, r
 	if err := json.NewEncoder(writer).Encode(json.RawMessage(fmt.Sprintf(`{"result": "%s"}`, responseBody))); err != nil {
 		log.Printf("Error: %s", err.Error())
 	}
+}
+
+func (c *URLDatabaseController) PingHandler(writer http.ResponseWriter, request *http.Request) {
+	err := c.Database.CheckStorage()
+	if err != nil {
+		writer.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	writer.WriteHeader(http.StatusOK)
 }

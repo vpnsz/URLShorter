@@ -11,12 +11,12 @@ import (
 const shortNameLen = 8
 
 type URLBatch struct {
-	CorrelationId string `json:"correlation_id"`
+	CorrelationID string `json:"correlation_id"`
 	OriginalURL   string `json:"original_url"`
 }
 
 type URLResultBatch struct {
-	CorrelationId string `json:"correlation_id"`
+	CorrelationID string `json:"correlation_id"`
 	ShortURL      string `json:"short_url"`
 }
 
@@ -64,7 +64,7 @@ func SaveURLBatch(attempts int, urlBatch []URLBatch, storage repository.URLDatab
 			storage.RollbackTransaction(tx)
 			return nil, err
 		}
-		result = append(result, URLResultBatch{CorrelationId: batch.CorrelationId, ShortURL: shortName})
+		result = append(result, URLResultBatch{CorrelationID: batch.CorrelationID, ShortURL: shortName})
 	}
 
 	err = storage.CommitTransaction(tx)

@@ -30,12 +30,12 @@ func getRandString(n int) string {
 	return result.String()
 }
 
-func SaveURL(attempts int, url string, storage repository.URLDatabaseDriver) (string, error) {
+func SaveURL(attempts int, url string, storage repository.URLDatabaseDriver, tx repository.TransactionType) (string, error) {
 	var shortName string
 	var i = 0
 	for ; i < attempts; i++ {
 		shortName = getRandString(shortNameLen)
-		err := storage.SaveURL(shortName, url)
+		err := storage.SaveURL(shortName, url, tx)
 		if err == nil {
 			break
 		} else if errors.Is(err, repository.ErrSaveURL) {
@@ -59,7 +59,7 @@ func SaveURLBatch(attempts int, urlBatch []URLBatch, storage repository.URLDatab
 	}
 
 	for _, batch := range urlBatch {
-		shortName, err := SaveURL(attempts, batch.OriginalURL, storage)
+		shortName, err := SaveURL(attempts, batch.OriginalURL, storage, tx)
 		if err != nil {
 			storage.RollbackTransaction(tx)
 			return nil, err

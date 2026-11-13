@@ -27,7 +27,7 @@ func NewURLDatabase() *URLFileDatabase {
 	return &URLFileDatabase{urlMap: make(map[string]int)}
 }
 
-func (d *URLFileDatabase) SaveURL(shortName, url string) error {
+func (d *URLFileDatabase) SaveURL(shortName, url string, transaction TransactionType) error {
 	d.mutex.Lock()
 	defer d.mutex.Unlock()
 	if _, ok := d.urlMap[shortName]; ok {

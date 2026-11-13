@@ -23,16 +23,20 @@ type URLDatabaseController struct {
 }
 
 func (c *URLDatabaseController) trySaveURL(url string, writer http.ResponseWriter) string {
-	shortName, err := service.SaveURL(20, url, c.Database)
+	tx, err := c.Database.BeginTransaction()
+	shortName, err := service.SaveURL(20, url, c.Database, tx)
 	if err != nil {
 		if errors.Is(err, repository.ErrSaveURL) {
 			writer.WriteHeader(http.StatusInternalServerError)
+			c.Database.RollbackTransaction(tx)
 			return ""
 		}
 		log.Printf("Error: %s", err.Error())
 		writer.WriteHeader(http.StatusInternalServerError)
+		c.Database.RollbackTransaction(tx)
 		return ""
 	}
+	c.Database.CommitTransaction(tx)
 	return shortName
 }
 

@@ -11,7 +11,7 @@ var ErrNoSuchShortName = errors.New("no such short name")
 type TransactionType any
 
 type URLDatabaseDriver interface {
-	SaveURL(shortName, url string) error
+	SaveURL(shortName, url string, transaction TransactionType) error
 	GetURLByShortName(shortName string) (string, error)
 	SaveToStorage(conf *config.Config) error
 	RestoreFromStorage(conf *config.Config) error

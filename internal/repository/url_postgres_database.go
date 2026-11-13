@@ -68,18 +68,23 @@ func (d *URLPostgresDatabase) Close() {
 
 // URLDatabaseDriver interface implementation
 
-func (d *URLPostgresDatabase) SaveURL(shortName, url string) error {
+func (d *URLPostgresDatabase) SaveURL(shortName, url string, transaction TransactionType) error {
+	tx, f := transaction.(*sql.Tx)
+	if !f {
+		log.Fatal("Incorrect transaction Type")
+	}
+
 	ctx, cancel := context.WithTimeout(d.ctx, databaseInsertTimeout)
 	defer cancel()
 
 	var tmp string
-	err := d.db.QueryRowContext(ctx, selectURLQuery, shortName).Scan(&tmp)
+	err := tx.QueryRowContext(ctx, selectURLQuery, shortName).Scan(&tmp)
 
 	if !errors.Is(err, sql.ErrNoRows) {
 		return ErrSaveURL
 	}
 
-	_, err = d.db.ExecContext(ctx, insertURLQuery, uuid.New().String(), url, shortName)
+	_, err = tx.ExecContext(ctx, insertURLQuery, uuid.New().String(), url, shortName)
 
 	if err != nil {
 		return err

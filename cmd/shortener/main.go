@@ -72,6 +72,7 @@ func main() {
 	router := chi.NewRouter()
 	router.Post("/", handler.CompressHandler(handler.LoggedHandler(&sugarLogger, controller.SaveURLHandler)))
 	router.Post("/api/shorten", handler.CompressHandler(handler.LoggedHandler(&sugarLogger, controller.JSONSaveURLHandler)))
+	router.Post("/api/shorten/batch", handler.CompressHandler(handler.LoggedHandler(&sugarLogger, controller.JSONSaveURLBatchHandler)))
 	router.Get("/{id}", handler.CompressHandler(handler.LoggedHandler(&sugarLogger, controller.GetURLHandler)))
 	router.Get("/ping", handler.CompressHandler(handler.LoggedHandler(&sugarLogger, controller.PingHandler)))
 

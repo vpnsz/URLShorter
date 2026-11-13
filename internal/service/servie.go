@@ -10,6 +10,16 @@ import (
 
 const shortNameLen = 8
 
+type URLBatch struct {
+	CorrelationId string `json:"correlation_id"`
+	OriginalURL   string `json:"original_url"`
+}
+
+type URLResultBatch struct {
+	CorrelationId string `json:"correlation_id"`
+	ShortURL      string `json:"short_url"`
+}
+
 func getRandString(n int) string {
 	var symbols = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 	var result strings.Builder
@@ -38,4 +48,29 @@ func SaveURL(attempts int, url string, storage repository.URLDatabaseDriver) (st
 		return "", repository.ErrSaveURL
 	}
 	return shortName, nil
+}
+
+func SaveURLBatch(attempts int, urlBatch []URLBatch, storage repository.URLDatabaseDriver) ([]URLResultBatch, error) {
+	var result = make([]URLResultBatch, 0, cap(urlBatch))
+
+	tx, err := storage.BeginTransaction()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, batch := range urlBatch {
+		shortName, err := SaveURL(attempts, batch.OriginalURL, storage)
+		if err != nil {
+			storage.RollbackTransaction(tx)
+			return nil, err
+		}
+		result = append(result, URLResultBatch{CorrelationId: batch.CorrelationId, ShortURL: shortName})
+	}
+
+	err = storage.CommitTransaction(tx)
+	if err != nil {
+		storage.RollbackTransaction(tx)
+		return nil, err
+	}
+	return result, nil
 }

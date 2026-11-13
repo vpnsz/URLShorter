@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/golang-migrate/migrate/v4"
@@ -86,11 +87,6 @@ func (d *URLPostgresDatabase) SaveURL(shortName, url string) error {
 	return nil
 }
 
-func (d *URLPostgresDatabase) SaveURLBatch() error {
-	// TODO: implement save batch
-	return nil
-}
-
 func (d *URLPostgresDatabase) GetURLByShortName(shortName string) (string, error) {
 	ctx, cancel := context.WithTimeout(d.ctx, databaseRequestTimeout)
 	defer cancel()
@@ -128,4 +124,24 @@ func (d *URLPostgresDatabase) CheckStorage() error {
 		return err
 	}
 	return nil
+}
+
+func (d *URLPostgresDatabase) BeginTransaction() (TransactionType, error) {
+	return d.db.Begin()
+}
+
+func (d *URLPostgresDatabase) RollbackTransaction(transaction TransactionType) {
+	tx, f := transaction.(*sql.Tx)
+	if !f {
+		log.Fatal("Incorrect transaction Type")
+	}
+	tx.Rollback()
+}
+
+func (d *URLPostgresDatabase) CommitTransaction(transaction TransactionType) error {
+	tx, f := transaction.(*sql.Tx)
+	if !f {
+		log.Fatal("Incorrect transaction Type")
+	}
+	return tx.Commit()
 }

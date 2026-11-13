@@ -38,11 +38,6 @@ func (d *URLFileDatabase) SaveURL(shortName, url string) error {
 	return nil
 }
 
-func (d *URLFileDatabase) SaveURLBatch() error {
-	// TODO: implement saving batch to URLFileDatabase
-	return nil
-}
-
 func (d *URLFileDatabase) GetURLByShortName(shortName string) (string, error) {
 	d.mutex.Lock()
 	defer d.mutex.Unlock()
@@ -86,5 +81,19 @@ func (d *URLFileDatabase) RestoreFromStorage(conf *config.Config) error {
 
 func (d *URLFileDatabase) CheckStorage() error {
 	//TODO: implement here, maybe check if file exist or something else
+	return nil
+}
+
+func (d *URLFileDatabase) BeginTransaction() (TransactionType, error) {
+	// No implementation for file database
+	return nil, nil
+}
+
+func (d *URLFileDatabase) RollbackTransaction(transaction TransactionType) {
+	// No implementation for file database
+}
+
+func (d *URLFileDatabase) CommitTransaction(transaction TransactionType) error {
+	// No implementation for file database
 	return nil
 }

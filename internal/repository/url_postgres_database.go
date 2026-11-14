@@ -12,7 +12,6 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/pgx"
 	"github.com/google/uuid"
-
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
@@ -28,7 +27,6 @@ const (
 )
 
 type URLPostgresDatabase struct {
-	// TODO: data
 	db  *sql.DB
 	ctx context.Context
 }

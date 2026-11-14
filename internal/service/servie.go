@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
+	"net/url"
 	"strings"
 )
 
@@ -50,7 +51,7 @@ func SaveURL(attempts int, url string, storage repository.URLDatabaseDriver, tx 
 	return shortName, nil
 }
 
-func SaveURLBatch(attempts int, urlBatch []URLBatch, storage repository.URLDatabaseDriver) ([]URLResultBatch, error) {
+func SaveURLBatch(attempts int, urlBatch []URLBatch, storage repository.URLDatabaseDriver, baseAddr string) ([]URLResultBatch, error) {
 	var result = make([]URLResultBatch, 0, cap(urlBatch))
 
 	tx, err := storage.BeginTransaction()
@@ -64,7 +65,8 @@ func SaveURLBatch(attempts int, urlBatch []URLBatch, storage repository.URLDatab
 			storage.RollbackTransaction(tx)
 			return nil, err
 		}
-		result = append(result, URLResultBatch{CorrelationID: batch.CorrelationID, ShortURL: shortName})
+		shortURL, _ := url.JoinPath(baseAddr, shortName)
+		result = append(result, URLResultBatch{CorrelationID: batch.CorrelationID, ShortURL: shortURL})
 	}
 
 	err = storage.CommitTransaction(tx)

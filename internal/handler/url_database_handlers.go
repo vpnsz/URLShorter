@@ -45,7 +45,7 @@ func (c *URLDatabaseController) trySaveURL(url string, writer http.ResponseWrite
 }
 
 func (c *URLDatabaseController) trySaveURLBatch(urlBatch []service.URLBatch, writer http.ResponseWriter) []service.URLResultBatch {
-	resultURLBatch, err := service.SaveURLBatch(20, urlBatch, c.Database)
+	resultURLBatch, err := service.SaveURLBatch(20, urlBatch, c.Database, c.Config.BaseShorterAddr)
 	if err != nil {
 		if errors.Is(err, repository.ErrSaveURL) {
 			writer.WriteHeader(http.StatusInternalServerError)

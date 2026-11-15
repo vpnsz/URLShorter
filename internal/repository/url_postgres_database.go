@@ -22,8 +22,9 @@ const (
 )
 
 const (
-	insertURLQuery string = "INSERT INTO urls(uuid, url, short_url) VALUES ($1, $2, $3)"
-	selectURLQuery string = "SELECT url FROM urls WHERE short_url=$1 LIMIT 1"
+	insertURLQuery      string = "INSERT INTO urls(uuid, url, short_url) VALUES ($1, $2, $3)"
+	selectURLQuery      string = "SELECT url FROM urls WHERE short_url=$1 LIMIT 1"
+	selectShortURLQuery string = "SELECT short_url FROM urls WHERE url=$1 LIMIT 1"
 )
 
 type URLPostgresDatabase struct {
@@ -64,17 +65,19 @@ func (d *URLPostgresDatabase) Close() {
 	d.db.Close()
 }
 
-// URLDatabaseDriver interface implementation
-
-func (d *URLPostgresDatabase) SaveURL(shortName, url string, transaction TransactionType) error {
+func (d *URLPostgresDatabase) getTransaction(transaction TransactionType) *sql.Tx {
 	tx, f := transaction.(*sql.Tx)
 	if !f {
 		log.Fatal("Incorrect transaction Type")
 	}
+	return tx
+}
+
+func (d *URLPostgresDatabase) SaveURL(shortName, url string, transaction TransactionType) error {
+	tx := d.getTransaction(transaction)
 
 	ctx, cancel := context.WithTimeout(d.ctx, databaseInsertTimeout)
 	defer cancel()
-
 	var tmp string
 	err := tx.QueryRowContext(ctx, selectURLQuery, shortName).Scan(&tmp)
 
@@ -88,6 +91,31 @@ func (d *URLPostgresDatabase) SaveURL(shortName, url string, transaction Transac
 		return err
 	}
 	return nil
+}
+
+func (d *URLPostgresDatabase) UpSaveURL(shortName, url string, transaction TransactionType) (string, error) {
+	tx := d.getTransaction(transaction)
+
+	ctx, cancel := context.WithTimeout(d.ctx, databaseInsertTimeout)
+	defer cancel()
+	var tmp string
+
+	err := tx.QueryRowContext(ctx, selectShortURLQuery, url).Scan(&tmp)
+	if err == nil {
+		return tmp, nil
+	}
+
+	err = tx.QueryRowContext(ctx, selectURLQuery, shortName).Scan(&tmp)
+	if !errors.Is(err, sql.ErrNoRows) {
+		return "", ErrSaveURL
+	}
+
+	_, err = tx.ExecContext(ctx, insertURLQuery, uuid.New().String(), url, shortName)
+	if err != nil {
+		return "", err
+	}
+
+	return "", nil
 }
 
 func (d *URLPostgresDatabase) GetURLByShortName(shortName string) (string, error) {

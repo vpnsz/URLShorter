@@ -32,23 +32,37 @@ func getRandString(n int) string {
 }
 
 func SaveURL(attempts int, url string, storage repository.URLDatabaseDriver, tx repository.TransactionType) (string, error) {
-	var shortName string
-	var i = 0
-	for ; i < attempts; i++ {
-		shortName = getRandString(shortNameLen)
+	for i := 0; i < attempts; i++ {
+		shortName := getRandString(shortNameLen)
 		err := storage.SaveURL(shortName, url, tx)
 		if err == nil {
-			break
+			return shortName, nil
 		} else if errors.Is(err, repository.ErrSaveURL) {
 			continue
 		} else {
 			return "", fmt.Errorf("failed to save url: %w", err)
 		}
 	}
-	if i == attempts {
-		return "", repository.ErrSaveURL
+	return "", repository.ErrSaveURL
+}
+
+func UpSaveURL(attempts int, url string, storage repository.URLDatabaseDriver, tx repository.TransactionType) (string, error) {
+	for i := 0; i < attempts; i++ {
+		shortName := getRandString(shortNameLen)
+		oldShortName, err := storage.UpSaveURL(shortName, url, tx)
+		if err == nil {
+			if len(oldShortName) != 0 {
+				// short name already exist
+				return oldShortName, repository.ErrURLAlreadyExist
+			}
+			return shortName, nil
+		} else if errors.Is(err, repository.ErrSaveURL) {
+			continue
+		} else {
+			return "", fmt.Errorf("failed to save url: %w", err)
+		}
 	}
-	return shortName, nil
+	return "", repository.ErrSaveURL
 }
 
 func SaveURLBatch(attempts int, urlBatch []URLBatch, storage repository.URLDatabaseDriver, baseAddr string) ([]URLResultBatch, error) {

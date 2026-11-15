@@ -22,26 +22,29 @@ type URLDatabaseController struct {
 	Database repository.URLDatabaseDriver
 }
 
-func (c *URLDatabaseController) trySaveURL(url string, writer http.ResponseWriter) string {
+func (c *URLDatabaseController) trySaveURL(url string, writer http.ResponseWriter) (string, error) {
 	tx, err := c.Database.BeginTransaction()
 	if err != nil {
 		writer.WriteHeader(http.StatusInternalServerError)
-		return ""
+		return "", nil
 	}
-	shortName, err := service.SaveURL(20, url, c.Database, tx)
+	shortName, err := service.UpSaveURL(20, url, c.Database, tx)
 	if err != nil {
-		if errors.Is(err, repository.ErrSaveURL) {
+		if errors.Is(err, repository.ErrURLAlreadyExist) {
+			c.Database.RollbackTransaction(tx)
+			return shortName, err
+		} else if errors.Is(err, repository.ErrSaveURL) {
 			writer.WriteHeader(http.StatusInternalServerError)
 			c.Database.RollbackTransaction(tx)
-			return ""
+			return "", nil
 		}
 		log.Printf("Error: %s", err.Error())
 		writer.WriteHeader(http.StatusInternalServerError)
 		c.Database.RollbackTransaction(tx)
-		return ""
+		return "", nil
 	}
 	c.Database.CommitTransaction(tx)
-	return shortName
+	return shortName, nil
 }
 
 func (c *URLDatabaseController) trySaveURLBatch(urlBatch []service.URLBatch, writer http.ResponseWriter) []service.URLResultBatch {
@@ -64,13 +67,19 @@ func (c *URLDatabaseController) SaveURLHandler(writer http.ResponseWriter, reque
 		writer.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	shortName := c.trySaveURL(string(buff), writer)
+	shortName, err := c.trySaveURL(string(buff), writer)
 	if len(shortName) == 0 {
 		return
 	}
 	responseBody, _ := url.JoinPath(c.Config.BaseShorterAddr, shortName) // игнорируем ошибку, так-как url всегда valid
 	writer.Header().Set("Content-Type", "text/plain")
-	writer.WriteHeader(http.StatusCreated)
+
+	if errors.Is(err, repository.ErrURLAlreadyExist) {
+		writer.WriteHeader(http.StatusConflict)
+	} else {
+		writer.WriteHeader(http.StatusCreated)
+	}
+
 	writer.Write([]byte(responseBody))
 }
 
@@ -95,13 +104,19 @@ func (c *URLDatabaseController) JSONSaveURLHandler(writer http.ResponseWriter, r
 		writer.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	shortName := c.trySaveURL(jsonBody.URL, writer)
+	shortName, err := c.trySaveURL(jsonBody.URL, writer)
 	if len(shortName) == 0 {
 		return
 	}
 	responseBody, _ := url.JoinPath(c.Config.BaseShorterAddr, shortName) // игнорируем ошибку, так-как url всегда valid
 	writer.Header().Set("Content-Type", "application/json")
-	writer.WriteHeader(http.StatusCreated)
+
+	if errors.Is(err, repository.ErrURLAlreadyExist) {
+		writer.WriteHeader(http.StatusConflict)
+	} else {
+		writer.WriteHeader(http.StatusCreated)
+	}
+
 	if err := json.NewEncoder(writer).Encode(json.RawMessage(fmt.Sprintf(`{"result": "%s"}`, responseBody))); err != nil {
 		log.Printf("Error: %s", err.Error())
 	}

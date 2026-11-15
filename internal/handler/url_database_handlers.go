@@ -19,21 +19,46 @@ type jsonSaveURLRequest struct {
 
 type URLDatabaseController struct {
 	Config   *config.Config
-	Database *repository.URLDatabase
+	Database repository.URLDatabaseDriver
 }
 
-func (c *URLDatabaseController) trySaveURL(url string, writer http.ResponseWriter) string {
-	shortName, err := service.SaveURL(20, url, c.Database)
+func (c *URLDatabaseController) trySaveURL(url string, writer http.ResponseWriter) (string, error) {
+	tx, err := c.Database.BeginTransaction()
 	if err != nil {
-		if errors.Is(err, repository.ErrSaveURL) {
+		writer.WriteHeader(http.StatusInternalServerError)
+		return "", nil
+	}
+	shortName, err := service.UpSaveURL(20, url, c.Database, tx)
+	if err != nil {
+		if errors.Is(err, repository.ErrURLAlreadyExist) {
+			c.Database.RollbackTransaction(tx)
+			return shortName, err
+		} else if errors.Is(err, repository.ErrSaveURL) {
 			writer.WriteHeader(http.StatusInternalServerError)
-			return ""
+			c.Database.RollbackTransaction(tx)
+			return "", nil
 		}
 		log.Printf("Error: %s", err.Error())
 		writer.WriteHeader(http.StatusInternalServerError)
-		return ""
+		c.Database.RollbackTransaction(tx)
+		return "", nil
 	}
-	return shortName
+	c.Database.CommitTransaction(tx)
+	return shortName, nil
+}
+
+func (c *URLDatabaseController) trySaveURLBatch(urlBatch []service.URLBatch, writer http.ResponseWriter) []service.URLResultBatch {
+	resultURLBatch, err := service.SaveURLBatch(20, urlBatch, c.Database, c.Config.BaseShorterAddr)
+	if err != nil {
+		if errors.Is(err, repository.ErrSaveURL) {
+			writer.WriteHeader(http.StatusInternalServerError)
+			return nil
+		}
+		log.Printf("Error: %s", err.Error())
+		writer.WriteHeader(http.StatusInternalServerError)
+		return nil
+	}
+	return resultURLBatch
 }
 
 func (c *URLDatabaseController) SaveURLHandler(writer http.ResponseWriter, request *http.Request) {
@@ -42,13 +67,19 @@ func (c *URLDatabaseController) SaveURLHandler(writer http.ResponseWriter, reque
 		writer.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	shortName := c.trySaveURL(string(buff), writer)
+	shortName, err := c.trySaveURL(string(buff), writer)
 	if len(shortName) == 0 {
 		return
 	}
 	responseBody, _ := url.JoinPath(c.Config.BaseShorterAddr, shortName) // игнорируем ошибку, так-как url всегда valid
 	writer.Header().Set("Content-Type", "text/plain")
-	writer.WriteHeader(http.StatusCreated)
+
+	if errors.Is(err, repository.ErrURLAlreadyExist) {
+		writer.WriteHeader(http.StatusConflict)
+	} else {
+		writer.WriteHeader(http.StatusCreated)
+	}
+
 	writer.Write([]byte(responseBody))
 }
 
@@ -73,14 +104,69 @@ func (c *URLDatabaseController) JSONSaveURLHandler(writer http.ResponseWriter, r
 		writer.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	shortName := c.trySaveURL(jsonBody.URL, writer)
+	shortName, err := c.trySaveURL(jsonBody.URL, writer)
 	if len(shortName) == 0 {
 		return
 	}
 	responseBody, _ := url.JoinPath(c.Config.BaseShorterAddr, shortName) // игнорируем ошибку, так-как url всегда valid
 	writer.Header().Set("Content-Type", "application/json")
-	writer.WriteHeader(http.StatusCreated)
+
+	if errors.Is(err, repository.ErrURLAlreadyExist) {
+		writer.WriteHeader(http.StatusConflict)
+	} else {
+		writer.WriteHeader(http.StatusCreated)
+	}
+
 	if err := json.NewEncoder(writer).Encode(json.RawMessage(fmt.Sprintf(`{"result": "%s"}`, responseBody))); err != nil {
 		log.Printf("Error: %s", err.Error())
 	}
+}
+
+func (c *URLDatabaseController) JSONSaveURLBatchHandler(writer http.ResponseWriter, request *http.Request) {
+	decoder := json.NewDecoder(request.Body)
+	// read open bracket [
+	_, err := decoder.Token()
+	if err != nil {
+		writer.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	// read open bracket [
+
+	// read batch Tokens
+	var batches []service.URLBatch
+	for decoder.More() {
+		var batch service.URLBatch
+		if err := decoder.Decode(&batch); err != nil {
+			writer.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		batches = append(batches, batch)
+	}
+	// read batch Tokens
+
+	// read close bracket ]
+	_, err = decoder.Token()
+	if err != nil {
+		writer.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	// read close bracket ]
+	resultBatches := c.trySaveURLBatch(batches, writer)
+	if resultBatches == nil {
+		return
+	}
+	writer.Header().Set("Content-Type", "application/json")
+	writer.WriteHeader(http.StatusCreated)
+	if err = json.NewEncoder(writer).Encode(resultBatches); err != nil {
+		log.Printf("Error: %s", err.Error())
+	}
+}
+
+func (c *URLDatabaseController) PingHandler(writer http.ResponseWriter, request *http.Request) {
+	err := c.Database.CheckStorage()
+	if err != nil {
+		writer.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	writer.WriteHeader(http.StatusOK)
 }

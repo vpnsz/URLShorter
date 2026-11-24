@@ -2,6 +2,7 @@ package repository
 
 import (
 	"URLShorter/internal/config"
+	"URLShorter/migrations"
 	"context"
 	"database/sql"
 	"errors"
@@ -10,10 +11,12 @@ import (
 	"time"
 
 	"github.com/golang-migrate/migrate/v4"
-	"github.com/golang-migrate/migrate/v4/database/pgx"
+	"github.com/golang-migrate/migrate/v4/source/iofs"
 	"github.com/google/uuid"
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
+
+var migrationFs = &migrations.MigrationFs
 
 const (
 	databaseInsertTimeout  = time.Second * 6
@@ -32,12 +35,12 @@ type URLPostgresDatabase struct {
 	ctx context.Context
 }
 
-func (d *URLPostgresDatabase) MigrateUp(migrationPath string) error {
-	driver, err := pgx.WithInstance(d.db, &pgx.Config{})
+func (d *URLPostgresDatabase) MigrateUp(addr string) error {
+	sourceInstance, err := iofs.New(migrations.MigrationFs, ".")
 	if err != nil {
 		return err
 	}
-	mm, err := migrate.NewWithDatabaseInstance(migrationPath, "pgx", driver)
+	mm, err := migrate.NewWithSourceInstance("iofs", sourceInstance, addr)
 	if err != nil {
 		return err
 	}
@@ -46,6 +49,20 @@ func (d *URLPostgresDatabase) MigrateUp(migrationPath string) error {
 		return err
 	}
 	return nil
+
+	//driver, err := pgx.WithInstance(d.db, &pgx.Config{})
+	//if err != nil {
+	//	return err
+	//}
+	//mm, err := migrate.NewWithDatabaseInstance(migrationPath, "pgx", driver)
+	//if err != nil {
+	//	return err
+	//}
+	//err = mm.Up()
+	//if err != nil && !errors.Is(err, migrate.ErrNoChange) {
+	//	return err
+	//}
+	//return nil
 }
 
 func (d *URLPostgresDatabase) SetContext(ctx context.Context) {

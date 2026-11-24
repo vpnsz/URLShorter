@@ -18,8 +18,6 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
-var migrationFs = &migrations.MigrationFs
-
 const (
 	databaseInsertTimeout  = time.Second * 6
 	databaseRequestTimeout = time.Second * 2
@@ -51,20 +49,6 @@ func (d *URLPostgresDatabase) MigrateUp(addr string) error {
 		return err
 	}
 	return nil
-
-	//driver, err := pgx.WithInstance(d.db, &pgx.Config{})
-	//if err != nil {
-	//	return err
-	//}
-	//mm, err := migrate.NewWithDatabaseInstance(migrationPath, "pgx", driver)
-	//if err != nil {
-	//	return err
-	//}
-	//err = mm.Up()
-	//if err != nil && !errors.Is(err, migrate.ErrNoChange) {
-	//	return err
-	//}
-	//return nil
 }
 
 func (d *URLPostgresDatabase) SetContext(ctx context.Context) {

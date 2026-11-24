@@ -14,11 +14,8 @@ import (
 	_ "embed"
 
 	"github.com/go-chi/chi/v5"
-	//_ "github.com/golang-migrate/migrate/v4/source/github"
 	"go.uber.org/zap"
 )
-
-//const migrationPath string = "github://vpnsz/URLShorter/migrations#iter13"
 
 func main() {
 	logger, err := zap.NewDevelopment()

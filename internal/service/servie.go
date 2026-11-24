@@ -5,10 +5,21 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
+	"net/url"
 	"strings"
 )
 
 const shortNameLen = 8
+
+type URLBatch struct {
+	CorrelationID string `json:"correlation_id"`
+	OriginalURL   string `json:"original_url"`
+}
+
+type URLResultBatch struct {
+	CorrelationID string `json:"correlation_id"`
+	ShortURL      string `json:"short_url"`
+}
 
 func getRandString(n int) string {
 	var symbols = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
@@ -20,22 +31,62 @@ func getRandString(n int) string {
 	return result.String()
 }
 
-func SaveURL(attempts int, url string, storage *repository.URLDatabase) (string, error) {
-	var shortName string
-	var i = 0
-	for ; i < attempts; i++ {
-		shortName = getRandString(shortNameLen)
-		err := storage.SaveURL(shortName, url)
+func SaveURL(attempts int, url string, storage repository.URLDatabaseDriver, tx repository.TransactionType) (string, error) {
+	for i := 0; i < attempts; i++ {
+		shortName := getRandString(shortNameLen)
+		err := storage.SaveURL(shortName, url, tx)
 		if err == nil {
-			break
+			return shortName, nil
 		} else if errors.Is(err, repository.ErrSaveURL) {
 			continue
 		} else {
 			return "", fmt.Errorf("failed to save url: %w", err)
 		}
 	}
-	if i == attempts {
-		return "", repository.ErrSaveURL
+	return "", repository.ErrSaveURL
+}
+
+func UpSaveURL(attempts int, url string, storage repository.URLDatabaseDriver, tx repository.TransactionType) (string, error) {
+	for i := 0; i < attempts; i++ {
+		shortName := getRandString(shortNameLen)
+		oldShortName, err := storage.UpSaveURL(shortName, url, tx)
+		if err == nil {
+			if len(oldShortName) != 0 {
+				// short name already exist
+				return oldShortName, repository.ErrURLAlreadyExist
+			}
+			return shortName, nil
+		} else if errors.Is(err, repository.ErrSaveURL) {
+			continue
+		} else {
+			return "", fmt.Errorf("failed to save url: %w", err)
+		}
 	}
-	return shortName, nil
+	return "", repository.ErrSaveURL
+}
+
+func SaveURLBatch(attempts int, urlBatch []URLBatch, storage repository.URLDatabaseDriver, baseAddr string) ([]URLResultBatch, error) {
+	var result = make([]URLResultBatch, 0, cap(urlBatch))
+
+	tx, err := storage.BeginTransaction()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, batch := range urlBatch {
+		shortName, err := SaveURL(attempts, batch.OriginalURL, storage, tx)
+		if err != nil {
+			storage.RollbackTransaction(tx)
+			return nil, err
+		}
+		shortURL, _ := url.JoinPath(baseAddr, shortName)
+		result = append(result, URLResultBatch{CorrelationID: batch.CorrelationID, ShortURL: shortURL})
+	}
+
+	err = storage.CommitTransaction(tx)
+	if err != nil {
+		storage.RollbackTransaction(tx)
+		return nil, err
+	}
+	return result, nil
 }

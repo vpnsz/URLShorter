@@ -25,9 +25,12 @@ func ParseFlags(c *Config) {
 	paramA := new(hostPortFlag)
 	paramB := new(hostPortFlag)
 	var fileFlag = ""
+	var databaseAddrFlag = ""
+
 	flag.Var(paramA, "a", "host:port")
 	flag.Var(paramB, "b", "host:port")
 	flag.StringVar(&fileFlag, "f", "./default_storage.txt", "-f file_path")
+	flag.StringVar(&databaseAddrFlag, "d", "", "-d database_addr")
 	flag.Parse()
 	if paramA.FlagPresent() {
 		c.ServerAddr = paramA.host
@@ -37,5 +40,8 @@ func ParseFlags(c *Config) {
 	}
 	if len(fileFlag) != 0 {
 		c.StorageFilePath = fileFlag
+	}
+	if len(databaseAddrFlag) != 0 {
+		c.DatabaseAddr = databaseAddrFlag
 	}
 }
